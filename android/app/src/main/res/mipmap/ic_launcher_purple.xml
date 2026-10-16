@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The earlier icon's colours, offered in 設定 → アイコンの色 beside the blue one. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+  <background android:drawable="@drawable/ic_launcher_purple_background" />
+  <foreground android:drawable="@drawable/ic_launcher_purple_foreground" />
+</adaptive-icon>

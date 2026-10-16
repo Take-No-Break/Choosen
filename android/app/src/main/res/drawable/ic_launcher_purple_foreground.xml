@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The earlier icon (until 0.11), drawn like ic_launcher_foreground: grey-blue and periwinkle cards with
+     the yellow star. Chosen in 設定 → アイコンの色 (MainActivity: the LauncherPurple alias). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+  <group android:scaleX="0.86" android:scaleY="0.86" android:pivotX="54" android:pivotY="54">
+    <group android:rotation="-13" android:pivotX="49" android:pivotY="52">
+      <path
+          android:fillColor="#5A6482"
+          android:pathData="M37,30h24a4,4 0 0 1 4,4v36a4,4 0 0 1 -4,4h-24a4,4 0 0 1 -4,-4v-36a4,4 0 0 1 4,-4z" />
+    </group>
+    <group android:rotation="9" android:pivotX="62" android:pivotY="54">
+      <path
+          android:fillColor="#7D9BFF"
+          android:pathData="M49,31h26a4,4 0 0 1 4,4v38a4,4 0 0 1 -4,4h-26a4,4 0 0 1 -4,-4v-38a4,4 0 0 1 4,-4z" />
+      <group android:translateX="51.8" android:translateY="43.9" android:scaleX="0.85" android:scaleY="0.85">
+        <path
+            android:fillColor="#F4B73A"
+            android:pathData="M12,2.8l2.8,6l6.5,0.7l-4.9,4.4l1.4,6.4L12,17l-5.8,3.3l1.4,-6.4l-4.9,-4.4l6.5,-0.7z" />
+      </group>
+    </group>
+  </group>
+</vector>

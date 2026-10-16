@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Photos are only read, never changed or sent anywhere (the app only adds the collages the owner
+       saves, as new files in Pictures/Choosen). The network is used for one thing only:
+       showing the library of the owner's own PC (an address on the home network the owner typed in);
+       the app refuses every other address, and the PC's page cannot reach the phone's library. -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+  <!-- Only for sorting the owner's pictures into subfolders (評価ごとにサブフォルダへ), which the owner
+       starts and confirms: moving files Choosen did not create needs this one-time "all files" access. -->
+  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+
+  <application
+      android:label="${appLabel}"
+      android:icon="@mipmap/ic_launcher"
+      android:allowBackup="false"
+      android:usesCleartextTraffic="true"
+      android:theme="@style/Theme.Choosen">
+    <activity
+        android:name=".MainActivity"
+        android:exported="true"
+        android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize" />
+    <!-- The home screen icon: one of these two is on (設定 → アイコンの色; MainActivity.setIconColor).
+         Both open MainActivity. -->
+    <activity-alias
+        android:name=".LauncherBlue"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher"
+        android:enabled="true"
+        android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity-alias>
+    <activity-alias
+        android:name=".LauncherPurple"
+        android:targetActivity=".MainActivity"
+        android:icon="@mipmap/ic_launcher_purple"
+        android:enabled="false"
+        android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity-alias>
+  </application>
+</manifest>
