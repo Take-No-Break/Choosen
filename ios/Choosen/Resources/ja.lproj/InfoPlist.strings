@@ -1,0 +1,3 @@
+/* Shown when the app asks for the Photos library. */
+"NSPhotoLibraryUsageDescription" = "アルバムの写真をスワイプで評価するために表示します。写真を変更・削除したり、どこかへ送ったりすることはありません。";
+"NSPhotoLibraryAddUsageDescription" = "作ったコラージュを写真に保存します。";

@@ -1,0 +1,3 @@
+/* Shown when the app asks for the Photos library. */
+"NSPhotoLibraryUsageDescription" = "O Choosen mostra as fotos dos seus álbuns para você avaliá-las deslizando. Suas fotos nunca são alteradas, apagadas nem enviadas a lugar nenhum.";
+"NSPhotoLibraryAddUsageDescription" = "O Choosen salva em Fotos as colagens que você faz.";

@@ -1,0 +1,79 @@
+# Choosen for iPhone. XcodeGen makes Choosen.xcodeproj from this file on the macOS build machine
+# (.github/workflows/ios.yml), so no Xcode project is kept in the repository. Before generating,
+# copy web3/dist into Choosen/v3 (the workflow does it; both are ignored by Git).
+name: Choosen
+options:
+  bundleIdPrefix: com.choosen
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: ja
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CLANG_CXX_LANGUAGE_STANDARD: c++20
+    CLANG_ENABLE_OBJC_ARC: YES
+    GCC_WARN_UNUSED_FUNCTION: NO
+    MARKETING_VERSION: "0.12.0"  # the workflow passes the version of res/choosen.rc
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Choosen:
+    type: application
+    platform: iOS
+    sources:
+      - path: Choosen/App
+      - path: Choosen/Core
+      - path: Choosen/Resources
+        excludes: [Info.plist]
+      - path: Choosen/v3
+        type: folder
+        buildPhase: resources
+      # the shared core (the same files as the Android build, android/app/src/main/cpp/CMakeLists.txt)
+      - path: ../src/core.cpp
+      - path: ../src/core_library.cpp
+      - path: ../src/core_journal.cpp
+      - path: ../src/core_schedule.cpp
+      - path: ../src/core_api.cpp
+      - path: ../src/core_export.cpp
+      - path: ../src/common.cpp
+      - path: ../src/api_routes.cpp
+      - path: ../src/qr.cpp
+      - path: ../src/capi.cpp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.choosen.app
+        PRODUCT_NAME: Choosen
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_FILE: Choosen/Resources/Info.plist
+        SWIFT_OBJC_BRIDGING_HEADER: Choosen/App/Choosen-Bridging-Header.h
+        HEADER_SEARCH_PATHS: $(SRCROOT)/../src $(SRCROOT)/Choosen/Core
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # 設定 → アイコンの色: the earlier purple icon as an alternate icon
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIconPurple
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_BITCODE: NO
+        OTHER_CPLUSPLUSFLAGS: $(inherited) -Wno-unused-parameter
+  # drives the app's self-test in the simulator (CI only)
+  ChoosenUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: ChoosenUITests
+    dependencies:
+      - target: Choosen
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.choosen.app.uitests
+        TEST_TARGET_NAME: Choosen
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+schemes:
+  Choosen:
+    build:
+      targets:
+        Choosen: all
+        ChoosenUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - ChoosenUITests

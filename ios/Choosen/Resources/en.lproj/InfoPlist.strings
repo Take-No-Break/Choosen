@@ -1,0 +1,3 @@
+/* Shown when the app asks for the Photos library. */
+"NSPhotoLibraryUsageDescription" = "Choosen shows the pictures of your albums so you can rate them by swiping. Your photos are never changed, deleted or sent anywhere.";
+"NSPhotoLibraryAddUsageDescription" = "Choosen saves the collages you make to Photos.";
