@@ -1,0 +1,45 @@
+# Builds Choosen (the V3 web bundle with Node, then the exe with MSVC) and runs the self-test
+# suite for pull requests and manual runs. A failing self-test fails the check. The self-test report is kept as an artifact.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and self-test
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      # Choosen V3 (web3/) is built with Node before the exe embeds it
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web3/package-lock.json
+
+      - name: Build and run the self-test
+        shell: cmd
+        run: build.bat test
+
+      - name: Upload the self-test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-report
+          path: build/selftest.txt
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,18 @@
+name: Release checks
+on:
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test the checksum verifier
+        run: python3 -m unittest discover -s checks -p 'test_*.py' -v
+      - name: Verify published downloads and documentation
+        run: python3 checks/verify_release.py

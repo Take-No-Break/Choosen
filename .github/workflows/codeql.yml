@@ -1,0 +1,43 @@
+name: CodeQL
+on:
+  pull_request:
+    branches: [main]
+    paths: ['src/**', 'native/**', 'android/**', 'web/**', 'web3/**', '.github/workflows/codeql.yml']
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: 'Optional source branch to scan without changing that branch'
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  analyze:
+    # Public-repository scanning only; do not enable a paid private-repository plan.
+    if: ${{ github.event.repository.private == false }}
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [c-cpp, java-kotlin, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_branch && format('refs/heads/{0}', inputs.source_branch) || github.ref }}
+      - name: Record the analyzed commit
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
+          ref: ${{ inputs.source_branch && format('refs/heads/{0}', inputs.source_branch) || github.ref }}
+          sha: ${{ steps.source.outputs.sha }}
