@@ -1,0 +1,173 @@
+/* Choosen V3 design tokens: one flat blue (#0096fa) is the main colour, in contrast with plain black
+   (dark, first) or plain white (data-theme="light"), no gradients; V2's rating colours; very little
+   text. Things drawn over a photo keep their dark glass in both looks. */
+:root {
+  /* the camera / notch at the top: the Android app sets it (inline), an iPhone or a browser gives it */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --bg: #0e0f11;
+  --surface: #15171b;
+  --surface-2: #1b1e23;
+  --line: #2a2e35;
+  --text: #f2f3f5;
+  --muted: #9ba1aa;
+  --like: #3cc47c;
+  --super: #f4b73a;
+  --pass: #e0566a;
+  --archive: #8c919b;
+  --radius-card: 28px;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --accent: #0096fa; /* the main colour: buttons */
+  --on-accent: #ffffff;
+  --accent-ink: #0096fa; /* check marks, small accents */
+  --strong-line: #4a505a;
+  --nav-bg: rgba(14, 15, 17, 0.85);
+  --menu-bg: rgba(24, 26, 31, 0.96);
+  --font: 'Segoe UI Variable Text', 'Segoe UI', 'Yu Gothic UI', 'BIZ UDPGothic', 'Noto Sans JP', 'Noto Sans CJK JP', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #f3f4f7;
+  --surface: #ffffff;
+  --surface-2: #e9ecf1;
+  --line: #d6dbe2;
+  --text: #15171b;
+  --muted: #5d6470;
+  --accent: #0096fa;
+  --on-accent: #ffffff;
+  --accent-ink: #0096fa;
+  --strong-line: #9aa3af;
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --menu-bg: rgba(255, 255, 255, 0.98);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  height: 100dvh; /* a phone browser's toolbars never cover the bottom buttons */
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* soft picture edges (lib/feather.ts sets where the picture is drawn): it fades into the light
+   around it within --ff px instead of ending on a line */
+.feather {
+  --fx: 0px;
+  --fy: 0px;
+  --fw: 100%;
+  --fh: 100%;
+  --ff: 10px;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent var(--fx), #000 calc(var(--fx) + var(--ff)), #000 calc(var(--fx) + var(--fw) - var(--ff)), transparent calc(var(--fx) + var(--fw))),
+    linear-gradient(to bottom, transparent var(--fy), #000 calc(var(--fy) + var(--ff)), #000 calc(var(--fy) + var(--fh) - var(--ff)), transparent calc(var(--fy) + var(--fh)));
+  mask-image:
+    linear-gradient(to right, transparent var(--fx), #000 calc(var(--fx) + var(--ff)), #000 calc(var(--fx) + var(--fw) - var(--ff)), transparent calc(var(--fx) + var(--fw))),
+    linear-gradient(to bottom, transparent var(--fy), #000 calc(var(--fy) + var(--ff)), #000 calc(var(--fy) + var(--fh) - var(--ff)), transparent calc(var(--fy) + var(--fh)));
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* Waves of light over a blurred background (the gallery's full view): soft spots of
+   light and shade drift slowly over it, so parts of the blur brighten and dim in turn rather than the
+   whole of it at once. Transforms only (cheap on a phone); 演出 オフ or reduced motion: none,
+   控えめ: slower and fainter. Put right after the blurred image, inside the same box. */
+.waves {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  opacity: 0.85;
+}
+.waves::before,
+.waves::after {
+  content: '';
+  position: absolute;
+  left: -30%;
+  top: -30%;
+  width: 160%;
+  height: 160%;
+  will-change: transform;
+}
+.waves::before {
+  background:
+    radial-gradient(ellipse 26% 20% at 30% 34%, rgba(255, 255, 255, 0.75), transparent 72%),
+    radial-gradient(ellipse 22% 28% at 70% 66%, rgba(0, 0, 0, 0.5), transparent 72%),
+    radial-gradient(ellipse 18% 16% at 62% 22%, rgba(255, 255, 255, 0.55), transparent 72%);
+  animation: wave-a 13s ease-in-out infinite alternate;
+  animation-delay: var(--wave-delay, 0s);
+}
+.waves::after {
+  background:
+    radial-gradient(ellipse 24% 18% at 38% 72%, rgba(255, 255, 255, 0.6), transparent 72%),
+    radial-gradient(ellipse 20% 24% at 24% 30%, rgba(0, 0, 0, 0.4), transparent 72%),
+    radial-gradient(ellipse 26% 20% at 76% 44%, rgba(255, 255, 255, 0.5), transparent 72%);
+  animation: wave-b 17s ease-in-out infinite alternate;
+  animation-delay: calc(var(--wave-delay, 0s) * -1.7);
+}
+@keyframes wave-a {
+  0% {
+    transform: translate(-7%, -5%) scale(1);
+  }
+  50% {
+    transform: translate(6%, 4%) scale(1.12);
+  }
+  100% {
+    transform: translate(-2%, 8%) scale(0.94);
+  }
+}
+@keyframes wave-b {
+  0% {
+    transform: translate(6%, 6%) scale(1.08);
+  }
+  50% {
+    transform: translate(-6%, -3%) scale(0.95);
+  }
+  100% {
+    transform: translate(4%, -7%) scale(1.14);
+  }
+}
+html[data-fx='calm'] .waves {
+  opacity: 0.5;
+}
+html[data-fx='calm'] .waves::before,
+html[data-fx='calm'] .waves::after {
+  animation-duration: 26s;
+}
+html[data-fx='off'] .waves {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .waves {
+    display: none;
+  }
+}
