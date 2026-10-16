@@ -1,0 +1,37 @@
+#include <winver.h>
+
+1 ICON "choosen.ico"
+
+// The page is built into the exe, so every Choosen.exe (and every copy in releases\) serves exactly
+// the screens it was made with. The ids are listed in common.cpp (webResource).
+101 RCDATA "..\\web\\index.html"
+102 RCDATA "..\\web\\app.js"
+103 RCDATA "..\\web\\app.css"
+104 RCDATA "..\\web\\icon.png"
+// Choosen V3 (web3\dist, built by build.bat), served at /v3/
+111 RCDATA "..\\web3\\dist\\index.html"
+112 RCDATA "..\\web3\\dist\\app.js"
+113 RCDATA "..\\web3\\dist\\app.css"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 0,12,0,0
+ PRODUCTVERSION 0,12,0,0
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "041104B0"
+    BEGIN
+      VALUE "FileDescription", "Choosen - swipe to rank photos"
+      VALUE "ProductName", "Choosen"
+      VALUE "FileVersion", "0.12.0"
+      VALUE "ProductVersion", "0.12.0"
+      VALUE "OriginalFilename", "Choosen.exe"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x411, 1200
+  END
+END
