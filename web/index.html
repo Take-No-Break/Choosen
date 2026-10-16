@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Choosen</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="app.css">
+<link rel="icon" type="image/png" href="icon.png">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-like" viewBox="0 0 24 24"><path d="M2 21h4V9H2v12zm20-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 1 6.59 7.59C6.22 7.95 6 8.45 6 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></symbol>
+  <symbol id="i-super" viewBox="0 0 24 24"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></symbol>
+</svg>
+<header id="top">
+  <div class="brand">Choosen</div>
+  <nav id="tabs">
+    <button data-tab="swipe" class="on">スワイプ</button>
+    <button data-tab="ranking">ランキング</button>
+    <button data-tab="gallery">ギャラリー</button>
+    <button data-tab="settings">設定</button>
+  </nav>
+  <div id="status"></div>
+</header>
+
+<main>
+  <section id="view-swipe" class="view on">
+    <div class="bar">
+      <button id="swScope" class="chip">範囲: すべて</button>
+      <label class="compact">対象
+        <select id="swFilter" title="スワイプする画像の種類">
+          <option value="">未評価 ＋ 再評価</option>
+          <option value="fresh">未評価だけ</option>
+          <option value="liked">好評・超好評を厳選（もう一度評価）</option>
+          <option value="super">超好評を厳選</option>
+          <option value="passed">見送りを見直す</option>
+        </select>
+      </label>
+      <span id="swCounts" class="muted"></span>
+      <span class="spacer"></span>
+      <div id="lastRate" class="hidden" role="status" aria-live="polite"></div>
+    </div>
+    <div id="stage">
+      <div class="card" id="cardUnder"><div class="ph"></div></div>
+      <div class="card" id="cardTop">
+        <div class="ph"></div>
+        <div class="stamp like">好評</div>
+        <div class="stamp pass">見送り</div>
+        <div class="stamp super">★ 超好評</div>
+        <div class="stamp archive">アーカイブ</div>
+      </div>
+      <div id="empty" class="empty hidden"></div>
+      <div id="flickBadge" class="hidden">フリック中 — はじいて評価 · 右クリックか Esc で終了</div>
+      <div id="pageStrip" class="hidden" title="ページ（, . でもめくれます）"></div>
+      <div id="swButtons" class="phone-only" aria-label="評価ボタン">
+        <button data-cmd="back" title="前の画像に戻る">↩<span>戻る</span></button>
+        <button data-cmd="pass" class="pass" title="見送り">✕<span>見送り</span></button>
+        <button data-cmd="super" class="super" title="超好評">★<span>超好評</span></button>
+        <button data-cmd="like" class="like" title="好評">♥<span>好評</span></button>
+      </div>
+      <div id="swInfo">
+        <div id="swPath" class="path"></div>
+        <div id="swMeta" class="meta"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-ranking" class="view">
+    <div class="bar">
+      <label>階層 <select id="rkDepth"></select></label>
+      <label>並び順
+        <select id="rkSort">
+          <option value="score">スコア</option>
+          <option value="rate">好評率</option>
+          <option value="liked">好評数</option>
+          <option value="rated">評価数</option>
+          <option value="total">枚数</option>
+          <option value="rise">上がった順</option>
+          <option value="fall">下がった順</option>
+          <option value="name">名前</option>
+        </select>
+      </label>
+      <label>変動の比較
+        <select id="rkSince">
+          <option value="0">今回の起動から</option>
+          <option value="1">昨日から</option>
+          <option value="7">1週間前から</option>
+          <option value="30">1か月前から</option>
+        </select>
+      </label>
+      <input id="rkSearch" type="search" placeholder="名前で絞り込み">
+      <button id="rkStatsBtn" class="chip">統計</button>
+      <span class="spacer"></span>
+      <span id="rkSel" class="muted"></span>
+      <button id="rkSwipe" class="btn">選択をスワイプ</button>
+      <button id="rkGallery" class="btn">選択をギャラリーで表示</button>
+    </div>
+    <div id="rkStats" class="stats hidden"></div>
+    <div class="table-wrap">
+      <table id="rkTable">
+        <thead>
+          <tr>
+            <th class="c-sel"></th><th class="c-rank">順位</th><th>フォルダ</th>
+            <th class="c-score" title="好評（右スワイプ）の割合を、評価した枚数の少なさを割り引いて 0〜100 にした値。好評で必ず上がり、見送りで必ず下がります。">スコア ⓘ</th>
+            <th class="c-num">好評</th><th class="c-num">評価済</th><th class="c-num opt">枚数</th>
+            <th class="c-num opt">好評率</th><th class="c-num opt">超好評</th><th class="c-act"></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="view-gallery" class="view">
+    <div class="bar">
+      <div class="seg" id="gaStatus">
+        <button data-v="liked">好評</button>
+        <button data-v="super">超好評</button>
+        <button data-v="passed">見送り</button>
+        <button data-v="unrated">未評価</button>
+        <button data-v="all">すべて</button>
+        <button data-v="archived" title="二度と表示しないことにした画像（ここから元に戻せます）">アーカイブ</button>
+      </div>
+      <div class="seg" id="gaView">
+        <button data-v="images">画像</button>
+        <button data-v="folders">フォルダ</button>
+      </div>
+      <button id="gaScope" class="chip">範囲: すべて</button>
+      <label id="gaSortWrap">並び順
+        <select id="gaSort">
+          <option value="score">画像スコア順</option>
+          <option value="folder">フォルダ順位順</option>
+          <option value="recent">最近評価した順</option>
+          <option value="name">名前順</option>
+          <option value="random">ランダム</option>
+        </select>
+      </label>
+      <label id="gaFolderSortWrap" class="hidden">並び順
+        <select id="gaFolderSort">
+          <option value="rank">順位順</option>
+          <option value="count">該当する枚数の多い順</option>
+          <option value="name">名前順</option>
+        </select>
+      </label>
+      <select id="gaAlbums"><option value="">保存した条件…</option></select>
+      <button id="gaSave" class="btn">条件を保存</button>
+      <button id="gaDel" class="btn ghost" title="選択中の保存条件を削除">削除</button>
+      <button id="gaSwipe" class="btn" title="今の条件の画像だけでスワイプ（厳選）">この条件でスワイプ</button>
+      <button id="gaShow" class="btn primary" title="今の条件の画像を全画面で自動再生">▶ スライドショー</button>
+      <span class="spacer"></span>
+      <label id="gaSizeWrap" class="compact" title="画像の大きさ（左で小さく、右で大きく）">
+        <span class="sz-s">▫</span><input type="range" id="gaSize" min="100" max="480" step="10"><span class="sz-l">◻</span>
+      </label>
+      <span id="gaCount" class="muted"></span>
+    </div>
+    <div id="gridWrap"><div id="grid"></div><div id="gridEnd"></div></div>
+  </section>
+
+  <section id="view-settings" class="view">
+    <div class="settings">
+      <label class="adv-toggle" title="細かい設定も表示します"><input type="checkbox" id="stAdvanced"> アドバンスドモード</label>
+
+      <div class="desktop-only">
+      <h2>操作（クリックで選べます。マウスとキーボードは同時に使えます）</h2>
+      <div id="stControls"></div>
+      </div>
+
+      <h2>投げた後の速さ</h2>
+      <div class="row simple-only">
+        <div class="seg" id="stThrowMode"><button data-v="0">Fast</button><button data-v="1">Slow</button></div>
+      </div>
+      <dl class="modes simple-only">
+        <dt>Fast</dt><dd>投げた瞬間に確定。テンポよく進み、1 枚にかける時間が短く感じます。</dd>
+        <dt>Slow</dt><dd>画像が 0.5 秒かけて去り、その間は向きを変えたり取り消したりできます。1 枚をじっくり見ている感覚になります。</dd>
+      </dl>
+      <div class="row adv-only">
+        <select id="stThrow">
+          <option value="0">0 秒（Fast と同じ）</option>
+          <option value="200">0.2 秒</option>
+          <option value="300">0.3 秒</option>
+          <option value="400">0.4 秒</option>
+          <option value="500">0.5 秒（Slow と同じ）</option>
+        </select>
+        <span class="hint">画像が飛んでいて、向きを変えられる時間</span>
+      </div>
+      <p class="hint">向きを変えられるのは キーボード と マウス モード2 です（モード1 は、飛んでいる間にホイール ↑ で取り消しのみ）。
+        飛んでいる間に同じ方向をもう一度押すと、確定して次の画像にも同じ評価が付きます。</p>
+
+      <div class="desktop-only">
+      <h2>長押しで超好評になるまでの時間（キーボード B・C・D）</h2>
+      <p class="hint simple-only">0.4 秒</p>
+      <div class="row adv-only">
+        <select id="stLong">
+          <option value="200">0.2 秒</option>
+          <option value="300">0.3 秒</option>
+          <option value="400">0.4 秒（標準）</option>
+          <option value="500">0.5 秒</option>
+        </select>
+      </div>
+      </div>
+
+      <h2>点数</h2>
+      <label class="radio"><input type="checkbox" id="stOver"> <span>100 点を超えた分も表示する（オーバーポイント）　例: 100（+39）</span></label>
+      <p class="hint">好評は 70 点から始まり、再評価や厳選でもう一度好評になるたびに +2 点。超好評をもらうと 90 点になり、その後は好評で +1、超好評で +2 点。見送りでは変わりません。
+        画像には <span class="mk L"><svg><use href="#i-like"/></svg></span> が好評の回数、<span class="mk S"><svg><use href="#i-super"/></svg></span> が超好評の回数だけ並びます。
+        オフにしても 100 を超えた分は消えません（点数はいつも評価の記録から計算しています）。並び順には本当の点数を使います。</p>
+
+      <h2>再評価の割合</h2>
+      <div class="row">
+        <select id="stShare">
+          <option value="0">なし — 新しい画像だけ（新しい画像がなくなったら再評価）</option>
+          <option value="0.05">20 枚に 1 枚</option>
+          <option value="0.067">15 枚に 1 枚</option>
+          <option value="0.1">10 枚に 1 枚（標準）</option>
+          <option value="0.2">5 枚に 1 枚</option>
+          <option value="0.35">3 枚に 1 枚</option>
+          <option value="0.5">2 枚に 1 枚</option>
+          <option value="1">再評価のみ — 新しい画像は出さない</option>
+        </select>
+      </div>
+      <p class="hint">評価した画像がもう一度出てくる頻度です。好評の画像ほど間隔が長くなり、見送った画像はさらに長くなります。</p>
+
+      <div id="stFolders">
+      <h2>写真フォルダ</h2>
+      <div class="row">
+        <input id="stRoot" type="text" spellcheck="false" placeholder="例: C:\Users\Eric\PixivUtil2">
+        <button id="stPick" class="btn">フォルダを選択…</button>
+        <span id="stRootSubSlot"></span>
+      </div>
+      <div id="stRootNote"></div>
+      <div id="stMoreRoots"></div>
+      <div class="row">
+        <button id="stAddRoot" class="btn">＋ 写真フォルダを追加…</button>
+      </div>
+      <p class="hint">このフォルダの中を読むだけで、写真の移動・コピー・変更は一切しません。画像以外のファイルと、名前が「.」で始まるフォルダ（.git、.venv など）は無視します。</p>
+      <p class="hint">写真フォルダは複数にできます（別のドライブも可）。すべて合わせて 1 つのライブラリとして評価・順位付けします。同じ画像が 2 つのフォルダにあるときは、上にあるフォルダの 1 枚として数えます。
+        「✕」で外したフォルダの画像は表示されなくなりますが、評価は記録に残り、もう一度追加すると評価ごと戻ります。変更は「保存」で反映されます。</p>
+      <p class="hint" id="stCopies"></p>
+      <div class="row phone-only"><button id="stSaveFolders" class="btn primary">フォルダの設定を保存</button></div>
+      </div>
+
+      <div class="adv-only">
+        <h2>順位をつけるフォルダの階層</h2>
+        <div class="row">
+          <input id="stDepth" type="number" min="1" max="16">
+          <span class="hint">1 = 写真フォルダの直下のフォルダ（例: PixivUtil2\作者名）。サブフォルダのない写真フォルダは、そのフォルダ自体が 1 行になります。どの深さまで読み込むかは、写真フォルダごとの「最大の深さ」で決まります。</span>
+        </div>
+        <p id="stDepthNote" class="hint"></p>
+      </div>
+
+      <h2>作品ごとにまとめる（Pixiv の複数ページ作品）</h2>
+      <label class="radio"><input type="checkbox" id="stGroup"> <span><code>12345_p0</code>, <code>12345_p1</code>… のように同じ作品のページを 1 枚のカードにまとめる</span></label>
+      <p class="hint" id="stGroupInfo"></p>
+      <p class="hint">まとめると 1 回のスワイプで作品全体を評価し、フォルダの順位でも 1 作品 = 1 票になります（ページ数の多い作品で順位が偏りません）。
+        カードでは <kbd>,</kbd> <kbd>.</kbd> や右下のページ一覧でページをめくれます。オフに戻しても評価は消えません。</p>
+
+      <div id="stRemoteSection">
+      <h2>スマホでスワイプ</h2>
+      <div class="row">
+        <button id="stRemoteStart" class="btn primary">スマホでスワイプ</button>
+        <button id="stRemoteOff" class="btn hidden">オフにする</button>
+        <button id="stRemoteForget" class="btn hidden">登録したスマホをすべて解除</button>
+      </div>
+      <p class="hint" id="stRemoteState"></p>
+      </div>
+
+      <div id="stBackupSection">
+      <h2>バックアップの保存先（予備）</h2>
+      <div class="row">
+        <input id="stBackup" type="text" spellcheck="false" placeholder="例: C:\Users\Eric\Documents\Choosen-backup（空欄なら data\backup のみ）">
+        <button id="stPickBackup" class="btn">フォルダを選択…</button>
+      </div>
+      <p class="hint">評価の記録（ratings.log）と設定のコピーを、起動したときと、起動したままなら 1 日 1 回、ここにも置きます（60 日分）。評価そのものは、いつも <code>data\ratings.log</code> に記録されています。
+        D ドライブが壊れても評価が残るよう、別のドライブ（C など）を選ぶのがおすすめです。コピーできなかったときは画面上部に「⚠ バックアップ注意」と出ます。</p>
+      <div id="stWarn" class="notice warnbox hidden"></div>
+      </div>
+
+      <div class="row gap">
+        <button id="stSave" class="btn primary">保存</button>
+        <button id="stRescan" class="btn">フォルダを再スキャン</button>
+        <span id="stMsg" class="muted"></span>
+      </div>
+
+      <div id="stDataSection">
+      <h2>データ</h2>
+      <p class="hint">評価はすべて <code>data\ratings.log</code>（Choosen.exe と同じフォルダ）に、ファイル名とファイルの中身の指紋で記録されます。ファイル名を変えたり移動しても評価は引き継がれます。バックアップ（起動した日ごと、14 日分）は <code>data\backup</code> にあります。アーカイブした画像もファイルはそのまま残り、ギャラリーの「アーカイブ」から元に戻せます。</p>
+      </div>
+
+      <div class="adv-only">
+        <h2>表示の速さ</h2>
+        <p id="stPerf" class="hint"></p>
+        <p class="hint">記録は <code>data\perf.log</code> にも残ります。</p>
+      </div>
+      <div class="row"><button id="stQuit" class="btn danger">アプリを終了</button></div>
+      <div id="stV3Section">
+        <h2>画面</h2>
+        <div class="row"><button id="stV3" class="btn primary">Choosen V3 の画面にする</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="scopeModal" class="modal hidden">
+  <div class="dialog">
+    <div class="dlg-head">
+      <strong id="mdTitle">範囲を選択</strong>
+      <input id="mdSearch" type="search" placeholder="フォルダ名で検索">
+    </div>
+    <div id="mdList" class="dlg-list"></div>
+    <div class="dlg-foot">
+      <span id="mdCount" class="muted"></span>
+      <span class="spacer"></span>
+      <button id="mdAll" class="btn ghost">すべて（選択を解除）</button>
+      <button id="mdCancel" class="btn">キャンセル</button>
+      <button id="mdOk" class="btn primary">決定</button>
+    </div>
+  </div>
+</div>
+
+<div id="dirModal" class="modal hidden">
+  <div class="dialog">
+    <div class="dlg-head"><strong>写真フォルダを選ぶ</strong></div>
+    <div id="dirPath" class="dir-path"></div>
+    <div id="dirList" class="dlg-list"></div>
+    <div class="dlg-foot">
+      <button id="dirUp" class="btn ghost">↑ 上へ</button>
+      <span class="spacer"></span>
+      <button id="dirCancel" class="btn">キャンセル</button>
+      <button id="dirUse" class="btn primary">このフォルダを使う</button>
+    </div>
+  </div>
+</div>
+
+<div id="remoteModal" class="modal hidden">
+  <div class="dialog pair">
+    <div class="dlg-head"><strong>スマホでスワイプ</strong><span class="spacer"></span><button id="remoteClose" class="btn ghost">閉じる (Esc)</button></div>
+    <div class="dlg-body remote-body">
+      <div id="remoteQr"></div>
+      <p class="pair-code" id="remoteCode"></p>
+      <p id="remoteMsg"></p>
+      <p class="hint" id="remoteUrl"></p>
+      <button id="remoteAgain" class="btn primary hidden">新しい QR コードを出す</button>
+    </div>
+  </div>
+</div>
+
+<div id="pairModal" class="modal hidden">
+  <div class="dialog pair">
+    <div class="dlg-head"><strong>このスマホを登録</strong></div>
+    <div class="dlg-body">
+      <p>PC の Choosen の「設定」→「スマホでスワイプ」を押し、表示された QR コードを読み取るか、6 桁の番号を入れてください。</p>
+      <input id="pairInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+      <p id="pairMsg" class="hint"></p>
+    </div>
+    <div class="dlg-foot"><span class="spacer"></span><button id="pairOk" class="btn primary">登録</button></div>
+  </div>
+</div>
+
+<div id="helpModal" class="modal hidden">
+  <div class="dialog narrow">
+    <div class="dlg-head"><strong>操作一覧（クリックで切り替え · H で開く）</strong><span class="spacer"></span><button id="helpClose" class="btn ghost">閉じる (Esc)</button></div>
+    <div id="helpBody" class="dlg-body"></div>
+  </div>
+</div>
+
+<div id="bindModal" class="modal hidden">
+  <div class="dialog narrow">
+    <div class="dlg-head"><strong id="bindTitle">自分で割り当てる</strong><span class="spacer"></span><button id="bindClose" class="btn ghost">閉じる (Esc)</button></div>
+    <div id="bindBody" class="dlg-body"></div>
+    <div class="dlg-foot">
+      <span id="bindMsg" class="muted"></span>
+      <span class="spacer"></span>
+      <button id="bindCancel" class="btn">キャンセル</button>
+      <button id="bindSave" class="btn primary">保存して使う</button>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" class="lightbox hidden">
+  <img id="lbImg" alt="">
+  <div id="lbFlash" aria-hidden="true"></div>
+  <div class="lb-bar">
+    <div id="lbCap" class="lb-cap"></div>
+    <button id="lbPlay" class="btn" title="スライドショー (Space)">▶ 再生</button>
+    <select id="lbSpeed" title="1 枚の表示時間">
+      <option value="3">3 秒</option>
+      <option value="5" selected>5 秒</option>
+      <option value="8">8 秒</option>
+      <option value="12">12 秒</option>
+    </select>
+    <button id="lbShuffle" class="btn ghost" title="順番をシャッフル (S)">🔀 シャッフル</button>
+    <button id="lbArchive" class="btn ghost" title="二度と表示しない (Delete)">アーカイブ</button>
+    <button id="lbReveal" class="btn">エクスプローラーで表示 (E)</button>
+    <button id="lbClose" class="btn">閉じる (Esc)</button>
+  </div>
+  <button id="lbPrev" class="lb-nav prev" aria-label="前へ">‹</button>
+  <button id="lbNext" class="lb-nav next" aria-label="次へ">›</button>
+</div>
+
+<div id="toast"></div>
+<div id="offline" class="offline hidden">Choosen のサーバーに接続できません。Choosen.exe を起動し直してください。</div>
+
+<script src="app.js"></script>
+</body>
+</html>
