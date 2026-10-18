@@ -1,6 +1,8 @@
 # Choosen 📸
 
-[![Release checks](https://github.com/Take-No-Break/Choosen/actions/workflows/release-checks.yml/badge.svg)](https://github.com/Take-No-Break/Choosen/actions/workflows/release-checks.yml) · [MIT license](LICENSE) · [Checks & scan results](SECURITY-CHECKS.md)
+[![CI](https://github.com/Take-No-Break/Choosen/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Take-No-Break/Choosen/actions/workflows/ci.yml) [![CodeQL](https://github.com/Take-No-Break/Choosen/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/Take-No-Break/Choosen/actions/workflows/codeql.yml) [![Release checks](https://github.com/Take-No-Break/Choosen/actions/workflows/release-checks.yml/badge.svg?branch=main)](https://github.com/Take-No-Break/Choosen/actions/workflows/release-checks.yml)
+
+[MIT license](LICENSE) · [Checks & scan results](SECURITY-CHECKS.md)
 
 
 **Swipe your photos, Tinder-style. Find your favorites, then organize them.**
