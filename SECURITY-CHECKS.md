@@ -1,5 +1,15 @@
 # Checks and known findings
 
+## Automated checks
+
+| Check | What it verifies |
+|---|---|
+| [CI](https://github.com/Take-No-Break/Choosen/actions/workflows/ci.yml) | Builds the Windows app and bundled interfaces, then runs the configured application self-tests. |
+| [CodeQL](https://github.com/Take-No-Break/Choosen/actions/workflows/codeql.yml) | Analyzes C++, Java and JavaScript/TypeScript source. Findings appear in [code scanning](https://github.com/Take-No-Break/Choosen/security/code-scanning). |
+| [Release checks](https://github.com/Take-No-Break/Choosen/actions/workflows/release-checks.yml) | Checks published download sizes, SHA-256 hashes, archive contents and documentation links. |
+
+The README badges show workflow execution status on the public main branch. A successful CodeQL run means analysis completed; unresolved findings are listed separately below and in code scanning.
+
 ## Download results
 
 The Android APK and Windows ZIP are the distributed application files. The recorded VirusTotal results for these exact files are:
@@ -9,7 +19,7 @@ The Android APK and Windows ZIP are the distributed application files. The recor
 | Android APK | [0 / 68 detections](https://www.virustotal.com/gui/file/481ecbebb462164acca8cefffd77e0bfcafd9a4f27443f5892f2cb7b31be45e5/detection) |
 | Windows EXE inside the ZIP | [2 / 71 detections — investigation unresolved](https://www.virustotal.com/gui/file/f2e103eba8543db986136a5760b3bb4efb26bb71811b509a9354ba132cba1cda/detection) |
 
-Results were recorded on2026-10-15 and can change. Microsoft reported Trojan:Win32/Wacatac.B!ml; SecureAge reported Malicious. Whether these are false positives has not been established. Avoid running the Windows binary until investigated. No result is a guarantee of safety.
+Results were recorded on 2026-10-15 and can change. Microsoft reported Trojan:Win32/Wacatac.B!ml; SecureAge reported Malicious. Whether these are false positives has not been established. Avoid running the Windows binary until investigated. No result is a guarantee of safety.
 
 ## Source finding
 
