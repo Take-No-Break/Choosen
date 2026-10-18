@@ -1,5 +1,8 @@
 name: CodeQL
 on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'native/**', 'android/**', 'web/**', 'web3/**', '.github/workflows/codeql.yml']
   pull_request:
     branches: [main]
     paths: ['src/**', 'native/**', 'android/**', 'web/**', 'web3/**', '.github/workflows/codeql.yml']
