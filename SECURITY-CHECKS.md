@@ -12,14 +12,14 @@ The README badges show workflow execution status on the public main branch. A su
 
 ## Download results
 
-The Android APK and Windows ZIP are the distributed application files. The recorded VirusTotal results for these exact files are:
+The Android APK and Windows ZIP are the distributed application files. Version 0.14.0 was not submitted to VirusTotal. The recorded results below are for the 0.12.0 files and do not apply to 0.14.0:
 
 | File | Result |
 |---|---|
-| Android APK | [0 / 68 detections](https://www.virustotal.com/gui/file/481ecbebb462164acca8cefffd77e0bfcafd9a4f27443f5892f2cb7b31be45e5/detection) |
-| Windows EXE inside the ZIP | [2 / 71 detections — investigation unresolved](https://www.virustotal.com/gui/file/f2e103eba8543db986136a5760b3bb4efb26bb71811b509a9354ba132cba1cda/detection) |
+| 0.12.0 Android APK | [0 / 68 detections](https://www.virustotal.com/gui/file/481ecbebb462164acca8cefffd77e0bfcafd9a4f27443f5892f2cb7b31be45e5/detection) |
+| 0.12.0 Windows EXE inside the ZIP | [2 / 71 detections — investigation unresolved](https://www.virustotal.com/gui/file/f2e103eba8543db986136a5760b3bb4efb26bb71811b509a9354ba132cba1cda/detection) |
 
-Results were recorded on 2026-10-15 and can change. Microsoft reported Trojan:Win32/Wacatac.B!ml; SecureAge reported Malicious. Whether these are false positives has not been established. Avoid running the Windows binary until investigated. No result is a guarantee of safety.
+Results were recorded on 2026-10-15 for 0.12.0 and can change. Microsoft reported Trojan:Win32/Wacatac.B!ml; SecureAge reported Malicious. Whether these are false positives has not been established. Avoid running the Windows binary until investigated. No result is a guarantee of safety.
 
 ## Source finding
 
@@ -33,6 +33,6 @@ Release checks verify the published files' sizes, SHA-256 hashes, archive conten
 
 | File | SHA-256 |
 |---|---|
-| Choosen-Android-arm64.apk | 481ecbebb462164acca8cefffd77e0bfcafd9a4f27443f5892f2cb7b31be45e5 |
-| Choosen-Windows-x64.zip | 41896957f3068d05122a182ca2ce5b69cd6bbaefb0086ef7d0bf3ac68797274b |
-| Choosen.exe inside the ZIP | f2e103eba8543db986136a5760b3bb4efb26bb71811b509a9354ba132cba1cda |
+| Choosen-Android-arm64.apk | 6936e4b981a60d299ffd45dd95621135e569a116030b99812884dd2abe534537 |
+| Choosen-Windows-x64.zip | a093248fe09d1d94d978f9c9c5d494d116222602ca45e88c4da0ab7cbfb6fea7 |
+| Choosen.exe inside the ZIP | b5bdf2b5e34c5f968c6bac115fb274bee11f2659a6f8ff3a22ceefdddbe5510c |

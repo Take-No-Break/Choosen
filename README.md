@@ -11,11 +11,11 @@ Choosen helps you work through a photo collection one picture at a time. Choose 
 
 🌐 [日本語](docs/ja.md) · [中文](docs/zh-CN.md) · [English](docs/en.md) · [ไทย](docs/th.md) · [Português](docs/pt-BR.md)
 
-[⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/download/v0.12.0/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/download/v0.12.0/Choosen-Windows-x64.zip)
+[⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/download/v0.14.0/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/download/v0.14.0/Choosen-Windows-x64.zip)
 
 Android 10+ / ARM64 · Windows x64 + Microsoft Edge
 
-⚠️ Windows: VirusTotal reported **2/71 detections**; investigation is pending. Android: **0/68**. [Read the results before downloading](SECURITY-CHECKS.md).
+⚠️ 0.14.0 has not been scanned on VirusTotal. The recorded results are for 0.12.0: Windows **2/71 detections** (investigation pending), Android **0/68**. [Read the results before downloading](SECURITY-CHECKS.md).
 
 
 ## Start with your photo folders
