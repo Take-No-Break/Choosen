@@ -14,7 +14,11 @@ export interface Card {
   nL?: number; // how many likes it had (absent: none)
   nS?: number; // how many super likes
   kind?: string;
-  pages?: { id: number; fp: string; name: string }[];
+  // a work's pages; grouping off, each page is its own card (perPage) and brings its own state, and
+  // `at` is this card's place among them
+  pages?: { id: number; fp: string; name: string; rated?: boolean; p?: number; n?: number; last?: string }[];
+  perPage?: boolean;
+  at?: number;
 }
 
 export interface State {
@@ -36,6 +40,7 @@ export interface State {
   moreRoots?: string[]; // the further photo folders
   maxDepths?: number[]; // one subfolder limit per photo folder (-1 = all)
   overPoints?: boolean; // show the points above 100 as "100（+N）"
+  skipPassed?: boolean; // a passed picture never comes back in the swipe order
 }
 
 /** Points as the normal page shows them: up to 100 as they are; above, "100（+N）" or just 100. */
@@ -145,7 +150,8 @@ export function whenUnpaired(f: () => void) {
 }
 
 export async function getJ<T>(path: string, query: Record<string, string | number> = {}): Promise<T> {
-  const q = new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)])).toString();
+  // each=1: grouping off, a card still brings its work's pages (this page turns them per picture)
+  const q = new URLSearchParams([...Object.entries(query).map(([k, v]) => [k, String(v)]), ['each', '1']]).toString();
   const r = await fetch(q ? `${path}?${q}` : path);
   if (r.status === 401) onUnpaired?.();
   if (!r.ok) throw new Error(`HTTP ${r.status}`);

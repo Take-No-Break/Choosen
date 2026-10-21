@@ -3,6 +3,10 @@
 
 namespace core {
 
+namespace {
+thread_local bool loosePages = false;  // see coreSetLoosePages
+}  // namespace
+
 // JSON for one card. `i` is the image shown; its rating state comes from `stateOf` (the work's
 // lead page); `pagesOf` >= 0 adds the work's page list for flipping through it.
 std::string itemJson(int i, const char* kind, int stateOf, const std::vector<int>* pages) {
@@ -17,16 +21,26 @@ std::string itemJson(int i, const char* kind, int stateOf, const std::vector<int
   o += ",\"name\":" + jsonStr(name);
   o += ",\"dir\":" + jsonStr(dir);
   o += ",\"ext\":" + jsonStr(extOf(shown.rel));
-  if (pages && pages->size() > 1) {
+  if (pages && pages->size() > 1 && (g_cfg.groupWorks || loosePages)) {
+    // grouping off: each page is its own card and is rated on its own, so each brings its own state,
+    // and "at" says which of them this card is
+    const bool own = !g_cfg.groupWorks;
+    int at = 0;
     o += ",\"pages\":[";
     for (size_t k = 0; k < pages->size(); ++k) {
       const int pi = (*pages)[k];
       const Item& pg = items[pi];
       if (k) o += ',';
       o += "{\"id\":" + std::to_string(pi) + ",\"fp\":\"" + hex64(pg.fp) + "\",\"ext\":" + jsonStr(extOf(pg.rel)) +
-           ",\"name\":" + jsonStr(baseName(pg.rel)) + "}";
+           ",\"name\":" + jsonStr(baseName(pg.rel));
+      if (own)
+        o += std::string(",\"rated\":") + (pg.rated ? "true" : "false") + ",\"p\":" + fmtNum(pg.p, 0) +
+             ",\"n\":" + std::to_string(pg.nRatings) + ",\"last\":\"" + (pg.last ? std::string(1, pg.last) : std::string()) + "\"";
+      o += "}";
+      if (pi == i) at = (int)k;
     }
     o += "]";
+    if (own) o += ",\"perPage\":true,\"at\":" + std::to_string(at);
   }
   if (it.archived) o += ",\"archived\":true";
   o += std::string(",\"rated\":") + (it.rated ? "true" : "false");
@@ -47,7 +61,7 @@ std::string itemJson(int i, const char* kind, int stateOf, const std::vector<int
 static std::string cardJson(int anyPage) {
   const int w = items[anyPage].work;
   if (w < 0) return itemJson(anyPage, "");
-  return itemJson(works[w].pages[0], "", leadOf(works[w]), &works[w].pages);
+  return itemJson(works[w].pages[0], "", leadOf(works[w]), works[w].shown());
 }
 
 // Ids are positions in `items`, which can differ between runs; the fingerprint is the real identity.
@@ -72,6 +86,8 @@ bool validCid(const std::string& c) {
 }  // namespace core
 
 using namespace core;
+
+void coreSetLoosePages(bool on) { loosePages = on; }
 
 std::string apiState() {
   std::lock_guard<std::mutex> lk(mu);
@@ -127,6 +143,7 @@ std::string apiState() {
   o += std::string(",\"advanced\":") + (g_cfg.advanced ? "true" : "false");
   o += std::string(",\"throwSlow\":") + (g_cfg.throwSlow ? "true" : "false");
   o += std::string(",\"overPoints\":") + (g_cfg.overPoints ? "true" : "false");
+  o += std::string(",\"skipPassed\":") + (g_cfg.skipPassed ? "true" : "false");
   o += ",\"customKeys\":" + jsonStr(g_cfg.customKeys);
   o += ",\"customMouse\":" + jsonStr(g_cfg.customMouse);
   o += ",\"archived\":" + std::to_string(archived);
@@ -229,7 +246,7 @@ std::string apiItems(const std::string& filter, const std::string& scope, const 
     for (const Work& W : works) {
       if (W.folder < 0 || !m[W.folder]) continue;
       const int l = leadOf(W);
-      if (cardMatches(filter, items[l])) cards.push_back({W.pages[0], l, &W.pages});
+      if (cardMatches(filter, items[l])) cards.push_back({W.pages[0], l, W.shown()});
     }
   }
   auto S = [&](const Card& c) -> const Item& { return items[c.lead]; };
@@ -374,10 +391,10 @@ std::string apiRate(int id, const std::string& fpHex, char a, const std::string&
   if (a == 'R') {  // restore the whole archived work (archived pages belong to no card)
     std::string key, k2;
     int page = 0;
-    const bool pix = g_cfg.groupWorks && pixivPage(baseName(items[idx].rel), key, page);
+    const bool pix = g_cfg.groupWorks && workPage(baseName(items[idx].rel), key, page);
     for (const Item& it : items)
       if (it.archived && it.present && it.folder == items[idx].folder &&
-          (pix ? pixivPage(baseName(it.rel), k2, page) && k2 == key : &it == &items[idx]))
+          (pix ? workPage(baseName(it.rel), k2, page) && k2 == key : &it == &items[idx]))
         fps.push_back(it.fp);
     if (fps.empty()) fps.push_back(items[idx].fp);
   } else if (items[idx].work >= 0) {

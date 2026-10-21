@@ -489,6 +489,60 @@ int selftest() {
     CHECK(!has(apiPicks(), "100_p"), "and the cover takes it out");
   }
 
+  say("== numbered pages (x1.png, x2.png) are one work too");
+  {
+    put(L"N (8)\\scan1.jpg", 7101);
+    put(L"N (8)\\scan2.jpg", 7102);
+    put(L"N (8)\\SCAN10.png", 7103);
+    put(L"N (8)\\scan100.png", 7107);
+    put(L"N (8)\\IMG_0001.jpg", 7104);  // a photo number of 4 or more digits: not a page
+    put(L"N (8)\\IMG_0002.jpg", 7105);
+    put(L"N (8)\\other1.jpg", 7106);    // numbered, but alone: its own card
+    // a downloader's "<word>_<id>_<date>_<time>": the id is the work, the pages go by saving time
+    put(L"S (9)\\ILLUST_123456789_20261020_101503.jpg", 7108);  // another letter case: same work, same order
+    put(L"S (9)\\illust_123456789_20261020_101500.png", 7109);
+    put(L"S (9)\\illust_123456789_20261020_101506 (1).png", 7110);
+    put(L"S (9)\\illust_987654321_20261020_101510.png", 7111);
+    coreScanSync();
+    setGroup(1);
+    CHECK(folder("N (8)").total == 4 && folder("N (8)").images == 7, "scan1/2/10/100 are one card: %d cards, %d images",
+          folder("N (8)").total, folder("N (8)").images);
+    const std::string nx = apiNext("N (8)", "", "", 10);
+    const size_t at = nx.find("\"pages\":[");
+    CHECK(at != std::string::npos && nx.find("scan1.jpg", at) < nx.find("scan2.jpg", at) &&
+              nx.find("scan2.jpg", at) < nx.find("SCAN10.png", at) && nx.find("SCAN10.png", at) < nx.find("scan100.png", at),
+          "its pages go by number (1, 2, 10, 100), whatever the letter case");
+    CHECK(folder("S (9)").total == 2 && folder("S (9)").images == 4, "saved pictures of one id are one card: %d cards, %d images",
+          folder("S (9)").total, folder("S (9)").images);
+    const std::string sx = apiNext("S (9)", "", "", 10);
+    const size_t sa = sx.find("\"pages\":[");
+    CHECK(sa != std::string::npos && sx.find("101500", sa) < sx.find("101503", sa) && sx.find("101503", sa) < sx.find("101506", sa),
+          "and its pages go in the order they were saved");
+    CHECK(rate("N (8)/scan2.jpg", 'L', "n1").status == 200 && item("N (8)/scan1.jpg").events == 1 &&
+              item("N (8)/SCAN10.png").events == 1 && item("N (8)/IMG_0001.jpg").events == 0,
+          "one swipe rates every page of it, and nothing else");
+    setGroup(0);
+    CHECK(folder("N (8)").total == 7 && folder("S (9)").total == 4, "without grouping every image is a card again: %d, %d",
+          folder("N (8)").total, folder("S (9)").total);
+    CHECK(!has(apiItems("all", "S (9)", "name", 0, 50), "\"pages\""), "ungrouped, the classic page gets single pictures");
+    coreSetLoosePages(true);  // as V3 asks (each=1)
+    const std::string loose = apiItems("all", "S (9)", "name", 0, 50);
+    CHECK(has(loose, "\"perPage\":true") && has(loose, "\"at\":1") && has(loose, "\"at\":2"),
+          "for V3 each picture is its own card and still brings its work's pages, and its place in them");
+    CHECK(rate("S (9)/illust_123456789_20261020_101500.png", 'L', "n2").status == 200 &&
+              item("S (9)/ILLUST_123456789_20261020_101503.jpg").events == 0 &&
+              has(apiItems("all", "S (9)", "name", 0, 50), "\"rated\":true,\"p\":67"),
+          "a rating goes to that picture only, and its page shows its own state");
+    coreSetLoosePages(false);
+    int st = 200;
+    apiRevoke("n1", st);
+    apiRevoke("n2", st);
+    rmTree(lib + L"\\N (8)");
+    rmTree(lib + L"\\S (9)");
+    coreScanSync();
+    setGroup(1);
+  }
+
   say("== archive (never show again)");
   {
     setGroup(1);
@@ -679,6 +733,24 @@ int selftest() {
     st = 200;
     CHECK(has(apiPick("xyz", true, st), "error") && st == 400, "a bad fingerprint is refused");
     apiPick(b2.fp, false, st);
+  }
+
+  say("== never show passes again (skip_passed)");
+  {
+    int st = 200;
+    auto offered = [](const char* filter) { return has(apiNext("B (2)", "", "", 50, filter), "b4.jpg"); };
+    CHECK(rate("B (2)/b4.jpg", 'D', "sp1").status == 200 && offered(""), "a pass comes back by default");
+    ConfigPatch on;
+    on.skipPassed = 1;
+    CHECK(coreSetConfig(on).empty() && has(apiState(), "\"skipPassed\":true"), "the option can be turned on");
+    CHECK(!offered("") && offered("passed"), "then a pass never comes back, but the re-swipe of passes still has it");
+    std::string written;
+    readFileBytes(data + L"\\config.txt", written);
+    CHECK(has(written, "skip_passed=1"), "the option is saved");
+    ConfigPatch off;
+    off.skipPassed = 0;
+    CHECK(coreSetConfig(off).empty() && offered(""), "turned off, the pass comes back");
+    apiRevoke("sp1", st);
   }
 
   say("== settings: v0.4 files, Fast/Slow, advanced mode, keys of newer versions");
@@ -1034,6 +1106,17 @@ int selftest() {
     mkdirs(base + L"\\lib-other");
     CHECK(setRoots(nullptr, {narrow(base + L"\\lib-other")}).empty() && g_cfg.moreRoots.size() == 1,
           "a sibling whose name only starts the same (lib / lib-other) is allowed");
+    // a saved photo folder that is gone (deleted, a drive not connected) never blocks a change
+    const std::string other = narrow(base + L"\\lib-other"), gone = narrow(base + L"\\lib-gone");
+    mkdirs(base + L"\\lib-gone");
+    mkdirs(base + L"\\lib-new");
+    CHECK(setRoots(nullptr, {other, gone}).empty() && g_cfg.moreRoots.size() == 2, "a folder that will be deleted is added");
+    rmTree(base + L"\\lib-gone");
+    CHECK(setRoots(nullptr, {other, gone, narrow(base + L"\\lib-new")}).empty() && g_cfg.moreRoots.size() == 3,
+          "with a saved folder gone, another one can still be added");
+    CHECK(setRoots(nullptr, {other}).empty() && g_cfg.moreRoots.size() == 1, "and the gone one can be removed");
+    CHECK(has(setRoots(nullptr, {other, gone}), "フォルダが見つかりません") && g_cfg.moreRoots.size() == 1,
+          "a folder that is not there cannot be added");
     CHECK(setRoots(nullptr, {}).empty(), "and removed again");
     g_cfg = saved;
     saveConfig();

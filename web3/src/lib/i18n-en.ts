@@ -289,7 +289,7 @@ export const EN: Dict = {
   '追加': 'Add',
   '追加できませんでした': 'Could not add',
   '速度': 'Speed',
-  '連番の画像（p0, p1 …）を 1 枚に': 'Count numbered pictures (p0, p1 …) as one',
+  '連番の画像（p0, p1 … や 1, 2 …）を 1 枚に': 'Count numbered pictures (p0, p1 … or 1, 2 …) as one',
   '連続日数': 'Day streak',
   '週ごとのスワイプ': 'Swipes per week',
   '選べませんでした。もう一度お試しください。': 'Could not choose it. Please try again.',
@@ -329,4 +329,6 @@ export const EN: Dict = {
   'トリプルクリック': 'Triple-click',
   '次の画像へ（新しい画像は見送り）': 'Next picture (a new one is passed)',
   'マウスの 1・2・3 はカード表示で使われます': 'Mouse modes 1, 2 and 3 apply to the card layout.',
+  '見送りを再表示しない': 'Never show passes again',
+  '見送った画像はスワイプに二度と出さない': 'A passed picture never comes back while swiping',
 };

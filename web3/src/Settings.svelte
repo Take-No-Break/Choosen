@@ -345,8 +345,12 @@
         <button class="sw" class:on={s.overPoints} aria-label={t('オーバーポイント')} onclick={() => config({ over_points: s.overPoints ? 0 : 1 })}><span class="knob"></span></button>
       </div>
       <div class="item">
-        <span class="label">{t('グループ')}<small>{t('連番の画像（p0, p1 …）を 1 枚に')}</small></span>
+        <span class="label">{t('グループ')}<small>{t('連番の画像（p0, p1 … や 1, 2 …）を 1 枚に')}</small></span>
         <button class="sw" class:on={s.groupWorks} aria-label={t('グループ')} onclick={() => config({ group_works: s.groupWorks ? 0 : 1 })}><span class="knob"></span></button>
+      </div>
+      <div class="item">
+        <span class="label">{t('見送りを再表示しない')}<small>{t('見送った画像はスワイプに二度と出さない')}</small></span>
+        <button class="sw" class:on={s.skipPassed} aria-label={t('見送りを再表示しない')} onclick={() => config({ skip_passed: s.skipPassed ? 0 : 1 })}><span class="knob"></span></button>
       </div>
       <div class="item">
         <span class="label">{t('再評価')}</span>

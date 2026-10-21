@@ -108,3 +108,35 @@ export class PageTaps {
     this.lastTurn = -1e9;
   }
 }
+
+/**
+ * A page key held down turns page after page: one turn at once, then one every `every` ms after
+ * `delay`, until the key is let go or the work's last (or first) page is reached; a single press
+ * still goes round from the last page to the first. Its own timer, since whether and how fast
+ * Windows repeats a held Shift is a system setting.
+ */
+export class PageKeyHold {
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  private code = '';
+  constructor(
+    private delay = 300,
+    private every = 100,
+  ) {}
+  /** The key went down (not a repeat). `turn(first)` turns the page and says whether it did. */
+  press(code: string, turn: (first: boolean) => boolean) {
+    this.release();
+    if (!turn(true)) return;
+    this.code = code;
+    const next = () => {
+      this.timer = turn(false) ? setTimeout(next, this.every) : undefined;
+    };
+    this.timer = setTimeout(next, this.delay);
+  }
+  /** That key went up (without a code: any key, e.g. the window lost the keyboard). */
+  release(code?: string) {
+    if (code !== undefined && code !== this.code) return;
+    clearTimeout(this.timer);
+    this.timer = undefined;
+    this.code = '';
+  }
+}

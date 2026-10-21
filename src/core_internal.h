@@ -69,6 +69,10 @@ struct Item {
 struct Work {
   int folder = -1;
   std::vector<int> pages;  // item indices, sorted by page number; pages[0] is the cover
+  // Grouping off: the pages of the work its image belongs to, which its card can still turn through
+  // (each page is rated on its own). Empty otherwise: the card turns through `pages`.
+  std::vector<int> turn;
+  const std::vector<int>* shown() const { return turn.empty() ? &pages : &turn; }
 };
 
 struct Folder {
@@ -193,6 +197,9 @@ bool isTopKey(const std::string& path);
 std::string folderKeyOf(const Item& it);
 int ensureFolder(const std::string& path);
 bool pixivPage(const std::string& name, std::string& key, int& page);
+// A page of a work: Pixiv's "<id>_p<N>"; a downloader's "<word>_<id>_<date>_<time>" (the id is the
+// work, saved in page order); or a name ending in a 1- to 3-digit number (x1.png, x2.png, x001.png).
+bool workPage(const std::string& name, std::string& key, int& page);
 void rebuildWorks();
 void rebuildFolders();
 std::vector<char> scopeMask(const std::string& scope);

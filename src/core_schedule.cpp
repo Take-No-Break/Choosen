@@ -224,6 +224,8 @@ using namespace core;
 //     passes wait behind overdue likes
 //  3. new images in random order
 //  4. when nothing is due: the next images to become due ("ahead"), then the ones just seen
+// With skip_passed on, a card whose latest verdict is a pass never comes back in this order (the
+// re-swipe of passes, filter "passed", still shows them).
 // filter "fresh" = unrated cards only; "liked" / "likeOnly" / "super" / "passed" = re-swipe cards of that class
 // (curating), least recently rated first so every card gets its turn before any comes round again.
 // exclude = ids already in the client's queue (never returned); recent = ids just shown (used last).
@@ -260,6 +262,7 @@ std::string apiNext(const std::string& scope, const std::string& exclude, const 
       continue;
     }
     if (freshOnly && it.rated) continue;
+    if (g_cfg.skipPassed && it.rated && it.last == 'D') continue;
     total++;
     const bool isDue = it.touched && it.due <= tick;
     if (!it.touched) freshCount++;
@@ -321,7 +324,7 @@ std::string apiNext(const std::string& scope, const std::string& exclude, const 
     }
     if (k) o += ',';
     const int w = items[pick].work;
-    o += itemJson(pick, kind, leadOf(works[w]), &works[w].pages);
+    o += itemJson(pick, kind, leadOf(works[w]), works[w].shown());
   }
   o += "],\"counts\":{\"due\":" + std::to_string(dueCount + holdCount) + ",\"hold\":" + std::to_string(holdCount) +
        ",\"fresh\":" + std::to_string(freshCount) + ",\"total\":" + std::to_string(total) +

@@ -147,10 +147,72 @@ bool pixivPage(const std::string& name, std::string& key, int& page) {
   return true;
 }
 
+// Pixiv downloaders that name a picture "<word>_<illust id>_<YYYYMMDD>_<HHMMSS>[ (n)].<ext>", the
+// moment it was saved: the pages of a work share the id and were saved seconds apart, so the work
+// is the id and its pages go by name (= the order they were saved in). page stays 0.
+bool savedPage(const std::string& name, std::string& key, int& page) {
+  auto digit = [](char c) { return c >= '0' && c <= '9'; };
+  auto alpha = [](char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); };
+  size_t i = 0;
+  while (i < name.size() && alpha(name[i])) i++;
+  if (i == 0 || i >= name.size() || name[i] != '_') return false;
+  const size_t id = ++i;
+  while (i < name.size() && digit(name[i])) i++;
+  const size_t idEnd = i;
+  if (idEnd - id < 6 || idEnd - id > 12) return false;
+  for (size_t run : {8, 6}) {  // _YYYYMMDD_HHMMSS
+    if (i >= name.size() || name[i] != '_') return false;
+    size_t k = ++i;
+    while (k < name.size() && digit(name[k])) k++;
+    if (k - i != run) return false;
+    i = k;
+  }
+  if (i < name.size() && name[i] == ' ') {  // " (1)": a copy Windows numbered
+    size_t k = i + 1;
+    if (k >= name.size() || name[k] != '(') return false;
+    k++;
+    const size_t d = k;
+    while (k < name.size() && digit(name[k])) k++;
+    if (k == d || k >= name.size() || name[k] != ')') return false;
+    i = k + 1;
+  }
+  if (i >= name.size() || name[i] != '.' || name.find('.', i + 1) != std::string::npos) return false;
+  key = "@" + toLower(name.substr(0, idEnd));  // "@": never the same as a Pixiv or numbered key
+  page = 0;
+  return true;
+}
+
+// Other numbered pages: "<name><1 to 3 digits>.<ext>" (x1.png, x2.png ... x12.png, x001.png) in one
+// folder are pages of one work, in the order of their number. Longer numbers are left alone: they
+// count photos (IMG_0001), not pages.
+bool numberedPage(const std::string& name, std::string& key, int& page) {
+  auto digit = [](char c) { return c >= '0' && c <= '9'; };
+  const size_t dot = name.rfind('.');
+  if (dot == std::string::npos) return false;
+  size_t i = dot;
+  while (i > 0 && digit(name[i - 1])) i--;
+  if (dot - i < 1 || dot - i > 3) return false;
+  key = "#" + toLower(name.substr(0, i));  // "#": never the same as a Pixiv work's id
+  page = atoi(name.substr(i, dot - i).c_str());
+  return true;
+}
+
+// Pages of one number (a downloader's pages all have 0) go by name, whatever the letter case: the
+// work's key ignores it too, so ILLUST_... and illust_... of one id keep the order they were saved in.
+bool pageNameLess(const std::string& a, const std::string& b) {
+  const std::string la = toLower(a), lb = toLower(b);
+  return la != lb ? la < lb : a < b;
+}
+
+bool workPage(const std::string& name, std::string& key, int& page) {
+  return pixivPage(name, key, page) || savedPage(name, key, page) || numberedPage(name, key, page);
+}
+
 void rebuildWorks() {
   works.clear();
   std::unordered_map<std::string, int> byKey;
   std::unordered_set<std::string> keys;
+  std::unordered_map<std::string, std::vector<int>> loose;  // grouping off: each work's pages
   groupedCount = 0;
   for (int i = 0; i < (int)items.size(); ++i) {
     Item& it = items[i];
@@ -161,7 +223,7 @@ void rebuildWorks() {
     std::string name = s == std::string::npos ? it.rel : it.rel.substr(s + 1), key;
     int page = 0;
     int w;
-    const bool pix = pixivPage(name, key, page);
+    const bool pix = workPage(name, key, page);
     if (!pix || keys.insert(std::to_string(it.folder) + "|" + key).second) groupedCount++;
     if (g_cfg.groupWorks && pix) {
       auto f = byKey.find(std::to_string(it.folder) + "|" + key);
@@ -176,15 +238,25 @@ void rebuildWorks() {
     } else {
       w = (int)works.size();
       works.push_back({it.folder, {}});
+      if (pix) {
+        it.page = page;
+        loose[std::to_string(it.folder) + "|" + key].push_back(i);
+      }
     }
     it.work = w;
     works[w].pages.push_back(i);
   }
-  for (auto& w : works)
-    std::sort(w.pages.begin(), w.pages.end(), [](int a, int b) {
-      if (items[a].page != items[b].page) return items[a].page < items[b].page;
-      return items[a].rel < items[b].rel;
-    });
+  auto byPage = [](int a, int b) {
+    if (items[a].page != items[b].page) return items[a].page < items[b].page;
+    return pageNameLess(items[a].rel, items[b].rel);
+  };
+  for (auto& w : works) std::sort(w.pages.begin(), w.pages.end(), byPage);
+  // grouping off: every image is its own card, and the card can still turn through its work's pages
+  for (auto& [k, set] : loose) {
+    if (set.size() < 2) continue;
+    std::sort(set.begin(), set.end(), byPage);
+    for (int i : set) works[items[i].work].turn = set;
+  }
 }
 
 // Parents are always created before children, so a folder's id is larger than its parent's.
@@ -716,7 +788,7 @@ std::vector<std::vector<int>> archivedGroups(const std::vector<char>& inScope) {
     if (!it.present || !it.archived || it.folder < 0 || !inScope[it.folder]) continue;
     std::string key;
     int page = 0;
-    if (g_cfg.groupWorks && pixivPage(baseName(it.rel), key, page)) {
+    if (g_cfg.groupWorks && workPage(baseName(it.rel), key, page)) {
       it.page = page;
       auto f = byKey.find(std::to_string(it.folder) + "|" + key);
       if (f != byKey.end()) {
@@ -730,7 +802,7 @@ std::vector<std::vector<int>> archivedGroups(const std::vector<char>& inScope) {
   for (auto& g : groups)
     std::sort(g.begin(), g.end(), [](int a, int b) {
       if (items[a].page != items[b].page) return items[a].page < items[b].page;
-      return items[a].rel < items[b].rel;
+      return pageNameLess(items[a].rel, items[b].rel);
     });
   return groups;
 }

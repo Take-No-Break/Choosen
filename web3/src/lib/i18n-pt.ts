@@ -294,7 +294,7 @@ export const PT: Dict = {
   '追加': 'Adicionar',
   '追加できませんでした': 'Não foi possível adicionar',
   '速度': 'Velocidade',
-  '連番の画像（p0, p1 …）を 1 枚に': 'Contar fotos numeradas (p0, p1 …) como uma',
+  '連番の画像（p0, p1 … や 1, 2 …）を 1 枚に': 'Contar fotos numeradas (p0, p1 … ou 1, 2 …) como uma',
   '連続日数': 'Dias seguidos',
   '週ごとのスワイプ': 'Swipes por semana',
   '選べませんでした。もう一度お試しください。': 'Não foi possível escolher. Tente de novo.',
@@ -334,4 +334,6 @@ export const PT: Dict = {
   'トリプルクリック': 'Clique triplo',
   '次の画像へ（新しい画像は見送り）': 'Próxima foto (uma nova é dispensada)',
   'マウスの 1・2・3 はカード表示で使われます': 'Os modos de mouse 1, 2 e 3 valem para o modo Cartões.',
+  '見送りを再表示しない': 'Não mostrar dispensadas de novo',
+  '見送った画像はスワイプに二度と出さない': 'Uma foto dispensada não volta a aparecer ao deslizar',
 };

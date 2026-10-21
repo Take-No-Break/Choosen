@@ -17,8 +17,8 @@
   import { feather } from './lib/feather';
   import { svg } from './ui/icons';
   import { pairOf, pinchZoom, NO_ZOOM, Taps, type Pair, type Zoom } from './lib/gesture';
-  import { NO_PAGE, pagesOf, pageOf, shownOf, stepPage } from './lib/pages';
-  import { PageTaps } from './lib/taps';
+  import { NO_PAGE, pagesOf, pageOf, ratedOf, shownOf, stepPage, tapSide } from './lib/pages';
+  import { PageKeyHold, PageTaps } from './lib/taps';
 
   // items: the gallery's whole list, a slot empty until its page is loaded (onneed(i) asks for it)
   let {
@@ -34,11 +34,19 @@
   let ready = $state(false);
   const card = $derived(items[index]);
   // a work of several pages: the page on screen (Shift, ↓ / ↑, . / ,, a tap or the badge turns it; a
-  // rating still goes to the whole work)
+  // rating goes to the whole work, or with grouping off to the page on screen)
   let flipAt = $state.raw(NO_PAGE);
   const pages = $derived(pagesOf(card));
   const page = $derived(pageOf(card, flipAt));
+  const subject = $derived(card && ratedOf(card, page)); // what the ratings and the history are of
   const pageTaps = new PageTaps();
+  const pageHold = new PageKeyHold();
+  // a held page key runs through the work and stops at its end
+  const heldTurn = (d: 1 | -1) => (first: boolean) => {
+    if (!pages || (!first && (page + d < 0 || page + d >= pages.length))) return false;
+    flip(d);
+    return true;
+  };
   function flip(d: number) {
     if (!card || !pages) return;
     flipAt = { fp: card.fp, k: stepPage(page, pages.length, d) };
@@ -131,7 +139,7 @@
     const seq = ++historySeq;
     getJ<{ events: Rated[] }>('/api/history', { id: c.id, fp: c.fp })
       .then((r) => {
-        if (c !== card || seq !== historySeq) return;
+        if (c !== subject || seq !== historySeq) return;
         history = r.events;
         // a correction on its way: the history still shows what it replaces, so it waits for the next
         historyReady = !outbox.pendingFor(c.fp).some((x) => x.replace);
@@ -139,7 +147,7 @@
       .catch(() => {});
   }
   $effect(() => {
-    const c = card;
+    const c = subject;
     history = [];
     historyReady = false;
     editing = false;
@@ -151,7 +159,7 @@
   // a rating of this picture saved (or queued, from here or the swipe screen): count and history follow
   onMount(() =>
     outbox.watch(() => {
-      const c = card;
+      const c = subject;
       if (!c || bare) return;
       const now = outbox.pendingFor(c.fp).length;
       if (now < pending) loadHistory(c);
@@ -165,7 +173,7 @@
    * on another device).
    */
   function rate(a: 'L' | 'S' | 'D' | 'A', replace: boolean) {
-    const c = card;
+    const c = subject;
     if (!c || (replace && !historyReady)) return;
     // the newest one: named "latest" (the core picks it as it applies the request, so quick changes
     // replace one another); an earlier one: by its own ref (its rating id, or tick-<n> for an old one)
@@ -218,14 +226,16 @@
   });
 
   function onKey(e: KeyboardEvent) {
+    const plain = !e.ctrlKey && !e.altKey && !e.metaKey; // Alt+Shift, Win+Shift+S ... are not ours
     if (e.key === 'Escape' && editing) editing = false; // the choices first, then the view
     else if (e.key === 'Escape') onclose();
     else if (e.key === 'ArrowRight') go(1);
     else if (e.key === 'ArrowLeft') go(-1);
-    else if (pages && (e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && !e.ctrlKey && !e.altKey && !e.metaKey) flip(1);
-    else if (pages && (e.key === 'ArrowDown' || e.code === 'Period' || e.key === 'PageDown')) flip(1);
-    else if (pages && (e.key === 'ArrowUp' || e.code === 'Comma' || e.key === 'PageUp')) flip(-1);
-    else if (e.code === 'Space') void play(!playing);
+    else if (pages && plain && (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'ArrowDown' || e.code === 'Period' || e.key === 'PageDown')) {
+      if (!e.repeat) pageHold.press(e.code, heldTurn(1));
+    } else if (pages && plain && (e.key === 'ArrowUp' || e.code === 'Comma' || e.key === 'PageUp')) {
+      if (!e.repeat) pageHold.press(e.code, heldTurn(-1));
+    } else if (e.code === 'Space') void play(!playing);
     else return;
     e.preventDefault();
     e.stopPropagation();
@@ -257,6 +267,7 @@
     untrack(() => {
       flipAt = NO_PAGE;
       pageTaps.reset();
+      pageHold.release();
       if (viewer) setZoom(NO_ZOOM, false);
     });
   });
@@ -317,11 +328,12 @@
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     const isTap = moved < 10 && Math.abs(e.clientY - sy) < 10;
     const lone = isTap && e.pointerType !== 'mouse' && !!pages && !bare && zoom.s <= 1.01 && e.type !== 'pointercancel';
-    if (lone && pageTaps.turning(e.timeStamp)) return void (taps.reset(), flip(1));
+    const side = tapSide(e.clientX, 0, innerWidth); // the right half: the next page, the left half: back
+    if (lone && pageTaps.turning(e.timeStamp)) return void (taps.reset(), flip(side));
     const n = isTap ? taps.tap(e.clientX, e.clientY, e.timeStamp) : 0;
     if (n === 1 && lone) {
       const c = card;
-      pageTaps.later(() => card === c && (flip(1), true));
+      pageTaps.later(() => card === c && (flip(side), true));
     } else if (n >= 2) pageTaps.cancel();
     const tapped = n === 2;
     if (bare && n === 1 && zoom.s <= 1.01 && e.type !== 'pointercancel') return void onclose(); // a tap: back
@@ -341,9 +353,16 @@
     if (Math.abs(d) > 60) go(d < 0 ? 1 : -1);
   }
   onMount(() => {
+    const keyUp = (e: KeyboardEvent) => pageHold.release(e.code);
+    const blur = () => pageHold.release();
     addEventListener('keydown', onKey, true); // before the swipe screen's keys
+    addEventListener('keyup', keyUp, true);
+    addEventListener('blur', blur);
     return () => {
       removeEventListener('keydown', onKey, true);
+      removeEventListener('keyup', keyUp, true);
+      removeEventListener('blur', blur);
+      pageHold.release();
       clearTimeout(idleTimer);
       void lock?.release();
     };

@@ -124,6 +124,7 @@ void loadConfig() {
     else if (k == "advanced_mode") g_cfg.advanced = atoi(v.c_str()) != 0;
     else if (k == "throw_mode") g_cfg.throwSlow = v == "slow", sawThrowMode = true;
     else if (k == "over_points") g_cfg.overPoints = atoi(v.c_str()) != 0;
+    else if (k == "skip_passed") g_cfg.skipPassed = atoi(v.c_str()) != 0;
     else if (k == "remote_access") g_cfg.remote = atoi(v.c_str()) != 0;
     else if (k == "custom_keys") g_cfg.customKeys = validBindings(v) ? v : "";
     else if (k == "custom_mouse") g_cfg.customMouse = validBindings(v) ? v : "";
@@ -163,6 +164,7 @@ void saveConfig() {
                   "\nadvanced_mode=" + (g_cfg.advanced ? "1" : "0") +
                   "\nthrow_mode=" + (g_cfg.throwSlow ? "slow" : "fast") +
                   "\nover_points=" + (g_cfg.overPoints ? "1" : "0") + "\nswipe_buttons=" + (g_cfg.swipeButtons ? "1" : "0") +
+                  "\nskip_passed=" + (g_cfg.skipPassed ? "1" : "0") +
                   "\nremote_access=" + (g_cfg.remote ? "1" : "0") +
                   "\ncustom_keys=" + g_cfg.customKeys + "\ncustom_mouse=" + g_cfg.customMouse + "\n";
   for (const auto& line : g_unknownConfig) s += line + "\n";
@@ -240,7 +242,15 @@ std::string coreSetConfig(const ConfigPatch& p) {
   };
   // Validate everything first: a failed save must not leave half of it applied.
   std::string root = p.root ? clean(*p.root) : std::string(), backup = p.backupDir ? clean(*p.backupDir) : std::string();
-  if (p.root && !root.empty() && !isDirectory(widen(root))) return "フォルダが見つかりません: " + root;
+  // Only a folder being added must exist. A saved one may be gone (deleted, or a drive that is not
+  // connected): it stays removable and never blocks adding or removing the others.
+  auto isSaved = [](const std::string& path) {
+    for (const auto& r : photoRoots())
+      if (toLower(r) == toLower(path)) return true;
+    return false;
+  };
+  auto missing = [&](const std::string& path) { return !isSaved(path) && !isDirectory(widen(path)); };
+  if (p.root && !root.empty() && missing(root)) return "フォルダが見つかりません: " + root;
   // The photo folders after this save; empty entries are dropped, and if the first one is left
   // empty the next one becomes the first.
   // Each folder keeps its subfolder limit: the one sent with it, else the one it has now.
@@ -267,7 +277,7 @@ std::string coreSetConfig(const ConfigPatch& p) {
   }
   if (p.moreRoots)
     for (const auto& m : newRoots)
-      if (!isDirectory(widen(m))) return "フォルダが見つかりません: " + m;
+      if (missing(m)) return "フォルダが見つかりません: " + m;
   // Photo folders must not overlap, or an image would be counted in two of them. Compared as full
   // paths (".." resolved), ignoring letter case and a trailing backslash. Junctions and other
   // links to the same folder are not detected.
@@ -359,6 +369,7 @@ std::string coreSetConfig(const ConfigPatch& p) {
     if (p.advanced == 0 || p.advanced == 1) g_cfg.advanced = p.advanced == 1;
     if (p.throwSlow == 0 || p.throwSlow == 1) g_cfg.throwSlow = p.throwSlow == 1;
     if (p.overPoints == 0 || p.overPoints == 1) g_cfg.overPoints = p.overPoints == 1;
+    if (p.skipPassed == 0 || p.skipPassed == 1) g_cfg.skipPassed = p.skipPassed == 1;
     if (p.swipeButtons == 0 || p.swipeButtons == 1) g_cfg.swipeButtons = p.swipeButtons == 1;
     if (p.remote == 0 || p.remote == 1) g_cfg.remote = p.remote == 1;
     if (p.customKeys) g_cfg.customKeys = *p.customKeys;

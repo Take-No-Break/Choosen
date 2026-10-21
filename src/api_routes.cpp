@@ -41,6 +41,7 @@ void parseQueryInto(const std::string& query, std::unordered_map<std::string, st
 bool apiRoute(const ApiCall& q, int& status, std::string& body) {
   const std::string& p = q.path;
   const bool post = q.method == "POST";
+  coreSetLoosePages(q.param("each") == "1");
   if (p == "/api/state") {
     body = apiState();
     return true;
@@ -105,6 +106,7 @@ bool apiRoute(const ApiCall& q, int& status, std::string& body) {
     c.advanced = q.paramInt("advanced_mode", -1);
     c.throwSlow = q.paramInt("throw_slow", -1);
     c.overPoints = q.paramInt("over_points", -1);
+    c.skipPassed = q.paramInt("skip_passed", -1);
     c.artistDepth = q.paramInt("artist_depth", 0);
     c.mouseMode = q.paramInt("mouse_mode", 0);
     c.keyMode = q.paramInt("key_mode", 0);

@@ -10,8 +10,8 @@
   import { outbox } from './lib/ratings';
   import { Spring, Tracker, dragRotation, lean, release, throwVelocity, LETTER, type Verdict } from './lib/physics';
   import { commandFor, HOLD_MS } from './lib/keys';
-  import { NO_PAGE, pagesOf, pageOf, shownOf, stepPage } from './lib/pages';
-  import { PageTaps } from './lib/taps';
+  import { NO_PAGE, pagesOf, pageOf, ratedOf, shownOf, stepPage, tapSide } from './lib/pages';
+  import { PageKeyHold, PageTaps } from './lib/taps';
   import { mouseMap, buttonInput, Flick, RATING_CMDS, type MouseCmd } from './lib/mouse';
   import { Ambient, paletteOf } from './lib/ambient';
   import { COLORS, type Intensity } from './lib/burst';
@@ -138,6 +138,14 @@
     photoReady = false;
     refill();
   }
+  // 見送りを再表示しない turned on: the passes already fetched go too (the re-swipe of passes keeps them)
+  let skipSeen = untrack(() => !!st.skipPassed); // the value at the start, not a dependency
+  $effect(() => {
+    const on = !!st.skipPassed;
+    if (on === skipSeen) return;
+    skipSeen = on;
+    if (on) untrack(() => filter !== 'passed' && choose({}));
+  });
 
 
   // nothing to show yet (the folder is still being read, or new ratings changed what is due): ask again
@@ -155,6 +163,13 @@
   const pages = $derived(pagesOf(current));
   const page = $derived(pageOf(current, flipAt));
   const pageTaps = new PageTaps();
+  const pageHold = new PageKeyHold();
+  // a held page key runs through the work and stops at its end
+  const heldTurn = (d: 1 | -1) => (first: boolean) => {
+    if (!active || !pages || (!first && (page + d < 0 || page + d >= pages.length))) return false;
+    flip(d);
+    return true;
+  };
   function flip(d: number) {
     const c = current;
     if (!c || !pages || feedBusy) return;
@@ -346,12 +361,15 @@
     cancelDrag();
     if (maxMove <= TAP_SLOP) {
       springBack();
-      // a work: a lone tap turns its page (taps while turning turn at once and never rate)
-      if (touch && pages && pageTaps.turning(now)) return void (taps.reset(), flip(1));
+      // a work: a lone tap turns its page, on the right half to the next one, on the left half back
+      // (taps while turning turn at once and never rate)
+      const box = deck.getBoundingClientRect();
+      const side = tapSide(down.x, box.left, box.width);
+      if (touch && pages && pageTaps.turning(now)) return void (taps.reset(), flip(side));
       const n = taps.tap(down.x, down.y, now);
       if (n === 1 && touch && pages) {
         const card = current;
-        pageTaps.later(() => current === card && !cardPending && (flip(1), true));
+        pageTaps.later(() => current === card && !cardPending && (flip(side), true));
       } else if (n === 2 && current) {
         pageTaps.cancel();
         pop('like', down.x, down.y);
@@ -415,6 +433,7 @@
       resetZoom(false);
       flipAt = NO_PAGE;
       pageTaps.reset();
+      pageHold.release();
     });
   });
   /** One finger on a zoomed picture moves it; a double tap there resets the zoom. True if it did. */
@@ -583,7 +602,7 @@
     navigator.vibrate?.(8);
     dx = dy = rot = 0;
     photoReady = decoded.has(nextCardAfter(card)?.id ?? -1);
-    rate(card, v);
+    rate(ratedOf(card, page), v);
     pose();
   }
 
@@ -593,7 +612,10 @@
   }
 
   function rate(card: Card, v: Verdict) {
-    const replace = redo !== null ? history[redo] : null;
+    // a seen picture is corrected only by a rating of that same picture: grouping off, another page
+    // turned to on it is rated on its own, placed right after it
+    const seen = redo !== null ? history[redo] : null;
+    const replace = seen && seen.card.fp === card.fp ? seen : null;
     const cid = newCid();
     const earlier = card.rated && card.last ? VERDICT_OF[card.last] ?? null : null;
     const info: Last = {
@@ -610,8 +632,13 @@
       const k = history.indexOf(replace);
       history = history.map((h) => (h === replace ? { card, verdict: v, cid } : h));
       redo = k >= 0 && k + 1 < history.length ? k + 1 : null;
+    } else if (seen) {
+      const k = history.indexOf(seen);
+      history = [...history.slice(0, k + 1), { card, verdict: v, cid }, ...history.slice(k + 1)];
+      redo = k + 2 < history.length ? k + 2 : null;
     } else {
-      queue = queue.slice(1);
+      // (grouping off, the page on screen may be another one than the card: it leaves the queue too)
+      queue = queue.slice(1).filter((c) => c.id !== card.id);
       history = [...history.slice(-399), { card, verdict: v, cid }];
       if (remaining !== null) remaining = Math.max(0, remaining - 1);
     }
@@ -721,7 +748,7 @@
   }
   /** Rates the current picture and scrolls on; with a wait, a further tap may still change it. */
   function feedCommit(v: Verdict, wait = 0, released = false) {
-    const card = current;
+    const card = current && ratedOf(current, page);
     if (!card || feedBusy) return;
     if (pending) clearTimeout(pending.timer);
     const go = () => {
@@ -735,17 +762,22 @@
     else go();
   }
   /** The verdict of the picture on screen when it is a seen one (after back, or rated in place). */
-  const shownVerdict = $derived(redo !== null ? (history[redo]?.verdict ?? null) : null);
+  const shownVerdict = $derived(
+    redo !== null && current && history[redo]?.card.fp === ratedOf(current, page).fp ? history[redo].verdict : null,
+  );
   /** Auto next off: rates the picture at once and keeps it on screen (a correction stays too). */
   // the last rating made in place, so the lit button can take it back
   let stayed: { card: Card; prev: Verdict | null } | null = null;
   function rateStay(v: Verdict) {
-    const card = current;
+    const card = current && ratedOf(current, page);
     if (!card || feedBusy || shownVerdict === v) return;
     const k = redo;
-    const prev = k !== null ? (stayed?.card === card ? stayed.prev : history[k].verdict) : null;
+    const same = k !== null && history[k].card.fp === card.fp; // not another page turned to on it
+    const prev = same ? (stayed?.card.fp === card.fp ? stayed.prev : history[k!].verdict) : null;
     rate(card, v);
-    redo = k ?? history.length - 1;
+    let at = history.length - 1;
+    while (at > 0 && history[at].card !== card) at--;
+    redo = at; // stays on it
     stayed = { card, prev };
     edgeFlash(v);
     light(v);
@@ -838,11 +870,13 @@
     feed = null;
     if (maxMove <= TAP_SLOP) {
       const lone = e.pointerType !== 'mouse' && e.timeStamp - down.t < 350 && !!pages && !pending;
-      if (lone && pageTaps.turning(e.timeStamp)) return void (taps.reset(), flip(1));
+      const box = deck.getBoundingClientRect();
+      const side = tapSide(e.clientX, box.left, box.width);
+      if (lone && pageTaps.turning(e.timeStamp)) return void (taps.reset(), flip(side));
       const n = taps.tap(e.clientX, e.clientY, e.timeStamp);
       if (n === 1 && lone) {
         const card = current;
-        pageTaps.later(() => current === card && !pending && (flip(1), true));
+        pageTaps.later(() => current === card && !pending && (flip(side), true));
       } else if (n === 2) {
         pageTaps.cancel();
         pop('like', e.clientX, e.clientY);
@@ -970,9 +1004,10 @@
     if (!cmd) return;
     if (cmd === 'pageNext' || cmd === 'pagePrev') {
       // only a work's pages; Alt+Shift (input language), Ctrl+Shift+... and Win+Shift+S are not ours
-      if (e.repeat || e.ctrlKey || e.altKey || e.metaKey || !pages) return;
+      if (e.ctrlKey || e.altKey || e.metaKey || !pages) return;
       e.preventDefault();
-      return flip(cmd === 'pageNext' ? 1 : -1);
+      if (!e.repeat) pageHold.press(e.code, heldTurn(cmd === 'pageNext' ? 1 : -1));
+      return;
     }
     e.preventDefault();
     if (cmd === 'likeHold') {
@@ -984,6 +1019,7 @@
     else decide(cmd);
   }
   function onKeyUp(e: KeyboardEvent) {
+    pageHold.release(e.code);
     if (!active) return;
     if (commandFor(st.keyMode, e.code) === 'likeHold' && holdTimer) {
       clearTimeout(holdTimer);
@@ -1083,9 +1119,12 @@
     }
   }
 
-  // another screen: flicking ends (the pointer is free again)
+  // another screen: flicking ends (the pointer is free again), and so does a held page key
   $effect(() => {
     if (!active && flick.on) flickOff();
+  });
+  $effect(() => {
+    if (!active) pageHold.release();
   });
 
   // The light follows the current photo.
@@ -1125,6 +1164,7 @@
     return () => {
       unhook();
       ambient.stop();
+      pageHold.release();
     };
   });
 
@@ -1136,7 +1176,7 @@
   <button class="pg num" title={t('次のページ（Shift / タップ）')} onclick={() => flip(1)}>{@html svg('layers', 13)}{page + 1} / {pages?.length}</button>
 {/snippet}
 
-<svelte:window onkeydown={onKeyDown} onkeyup={onKeyUp} />
+<svelte:window onkeydown={onKeyDown} onkeyup={onKeyUp} onblur={() => pageHold.release()} />
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="stage" class:flicking={flick.on} class:idle data-fx={fx.level} bind:this={stage} onpointerdowncapture={wake} onpointermove={stir} onpointerupcapture={stir} onpointercancelcapture={stir} oncontextmenu={(e) => e.preventDefault()}>
@@ -1200,7 +1240,7 @@
           <div class="meta" class:low={!showButtons} class:off={!prefs.info}>
             <div class="place">{placeOf(s.card.dir) || rootName || t('写真フォルダ')}</div>
             <div class="name">{pic.name}</div>
-            <div class="tags">{#each tags(s.card) as t}<span class="num">{t}</span>{/each}</div>
+            <div class="tags">{#each tags(pic) as t}<span class="num">{t}</span>{/each}</div>
           </div>
         {/if}
       </div>
@@ -1287,7 +1327,7 @@
           <div class="meta" class:low={!showButtons} class:off={!prefs.info}>
             <div class="place">{placeOf(current.dir) || rootName || t('写真フォルダ')}</div>
             <div class="name">{pic.name}</div>
-            <div class="tags">{#each tags(current) as t}<span class="num">{t}</span>{/each}</div>
+            <div class="tags">{#each tags(pic) as t}<span class="num">{t}</span>{/each}</div>
           </div>
         </div>
       {/key}

@@ -23,6 +23,7 @@ struct Config {
   int throwDelayMs = 300;                            // advanced mode: redirect window in ms
   int longPressMs = 400;                             // advanced mode: hold time that turns like into super
   bool overPoints = true;                            // show points above 100 as "100 (+N)"
+  bool skipPassed = false;                           // a passed card never comes back in the swipe order
   bool remote = false;                               // phones on the same network may connect (paired only)
   std::string customKeys;                            // keyboard layout 4, e.g. "like:ArrowRight,KeyL;pass:ArrowLeft"
   std::string customMouse;                           // mouse mode 4, e.g. "left:grab;right:back;wheelUp:back"
@@ -60,6 +61,7 @@ struct ConfigPatch {
   int advanced = -1;
   int throwSlow = -1;
   int overPoints = -1;
+  int skipPassed = -1;
   int remote = -1;
   const std::string* customKeys = nullptr;
   const std::string* customMouse = nullptr;
@@ -69,6 +71,9 @@ struct ConfigPatch {
 std::string coreSetConfig(const ConfigPatch& patch);
 
 std::string apiState();
+// Grouping off, cards bring their work's pages only for a page that turns them per picture (V3 asks
+// with each=1; the classic page does not, and gets single pictures as before). Per request (thread).
+void coreSetLoosePages(bool on);
 // Images of a saved photo folder that a subfolder limit of maxDepth would hide (for the settings
 // preview before saving).
 int coreHiddenBy(const std::string& rootPath, int maxDepth);

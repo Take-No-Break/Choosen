@@ -223,7 +223,7 @@
       <div id="stFolders">
       <h2>写真フォルダ</h2>
       <div class="row">
-        <input id="stRoot" type="text" spellcheck="false" placeholder="例: C:\Users\Eric\PixivUtil2">
+        <input id="stRoot" type="text" spellcheck="false" placeholder="例: D:\Photos">
         <button id="stPick" class="btn">フォルダを選択…</button>
         <span id="stRootSubSlot"></span>
       </div>
@@ -243,13 +243,13 @@
         <h2>順位をつけるフォルダの階層</h2>
         <div class="row">
           <input id="stDepth" type="number" min="1" max="16">
-          <span class="hint">1 = 写真フォルダの直下のフォルダ（例: PixivUtil2\作者名）。サブフォルダのない写真フォルダは、そのフォルダ自体が 1 行になります。どの深さまで読み込むかは、写真フォルダごとの「最大の深さ」で決まります。</span>
+          <span class="hint">1 = 写真フォルダの直下のフォルダ（例: Photos\作者名）。サブフォルダのない写真フォルダは、そのフォルダ自体が 1 行になります。どの深さまで読み込むかは、写真フォルダごとの「最大の深さ」で決まります。</span>
         </div>
         <p id="stDepthNote" class="hint"></p>
       </div>
 
-      <h2>作品ごとにまとめる（Pixiv の複数ページ作品）</h2>
-      <label class="radio"><input type="checkbox" id="stGroup"> <span><code>12345_p0</code>, <code>12345_p1</code>… のように同じ作品のページを 1 枚のカードにまとめる</span></label>
+      <h2>作品ごとにまとめる（複数ページの作品）</h2>
+      <label class="radio"><input type="checkbox" id="stGroup"> <span><code>12345_p0</code>, <code>12345_p1</code>…、<code>illust_12345_日付_時刻</code>、<code>x1</code>, <code>x2</code>… のように同じ作品のページを 1 枚のカードにまとめる</span></label>
       <p class="hint" id="stGroupInfo"></p>
       <p class="hint">まとめると 1 回のスワイプで作品全体を評価し、フォルダの順位でも 1 作品 = 1 票になります（ページ数の多い作品で順位が偏りません）。
         カードでは <kbd>,</kbd> <kbd>.</kbd> や右下のページ一覧でページをめくれます。オフに戻しても評価は消えません。</p>
@@ -267,7 +267,7 @@
       <div id="stBackupSection">
       <h2>バックアップの保存先（予備）</h2>
       <div class="row">
-        <input id="stBackup" type="text" spellcheck="false" placeholder="例: C:\Users\Eric\Documents\Choosen-backup（空欄なら data\backup のみ）">
+        <input id="stBackup" type="text" spellcheck="false" placeholder="例: E:\Choosen-backup（空欄なら data\backup のみ）">
         <button id="stPickBackup" class="btn">フォルダを選択…</button>
       </div>
       <p class="hint">評価の記録（ratings.log）と設定のコピーを、起動したときと、起動したままなら 1 日 1 回、ここにも置きます（60 日分）。評価そのものは、いつも <code>data\ratings.log</code> に記録されています。

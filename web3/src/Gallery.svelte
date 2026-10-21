@@ -517,7 +517,8 @@
     setTimeout(clearPicked, 1400);
   }
   // a work of several pages moves as a whole
-  const pickedIds = $derived([...picked.values()].flatMap((c) => [c.id, ...(c.pages ?? []).map((p) => p.id)]));
+  // (grouping off, each page is its own card: it moves alone)
+  const pickedIds = $derived([...picked.values()].flatMap((c) => [c.id, ...(c.perPage ? [] : (c.pages ?? []).map((p) => p.id))]));
 
   const likedBefore = (c: Card) => (c.nL ?? 0) + (c.nS ?? 0) > 0;
   const badge = (c: Card) => (c.last === 'S' ? 'star' : c.last !== 'D' ? 'heart' : likedBefore(c) ? 'heartHalf' : 'x');
