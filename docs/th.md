@@ -6,7 +6,7 @@
 
 [⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Windows-x64.zip)
 
-⚠️ เวอร์ชัน 0.16.0 ยังไม่ได้ตรวจด้วย VirusTotal ผลของเวอร์ชัน 0.12.0: VirusTotal ตรวจพบ Windows 2/71 รายการ ยังอยู่ระหว่างการตรวจสอบ ส่วน Android 0/68 [ดูผลการตรวจสอบ](../SECURITY-CHECKS.md)
+⚠️ ผล VirusTotal สำหรับเวอร์ชัน 0.16.0 บันทึกเมื่อ 2026-10-21: ตรวจพบ Windows 2/71 รายการ ยังอยู่ระหว่างการตรวจสอบ ส่วน Android 0/67 [ดูผลการตรวจสอบ](../SECURITY-CHECKS.md)
 
 ## ชอบ ชอบมาก หรือข้าม?
 

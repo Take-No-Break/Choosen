@@ -12,14 +12,16 @@ The README badges show workflow execution status on the public main branch. A su
 
 ## Download results
 
-The Android APK and Windows ZIP are the distributed application files. Version 0.16.0 has not been submitted to VirusTotal yet. The recorded results below are for the 0.12.0 files and do not apply to 0.16.0:
+These VirusTotal results were recorded on 2026-10-21 for the exact **0.16.0** files identified by SHA-256 below. The Android APK and the EXE extracted from the published Windows ZIP were submitted. The ZIP itself was not submitted for a separate malware scan.
 
 | File | Result |
 |---|---|
-| 0.12.0 Android APK | [0 / 68 detections](https://www.virustotal.com/gui/file/481ecbebb462164acca8cefffd77e0bfcafd9a4f27443f5892f2cb7b31be45e5/detection) |
-| 0.12.0 Windows EXE inside the ZIP | [2 / 71 detections — investigation unresolved](https://www.virustotal.com/gui/file/f2e103eba8543db986136a5760b3bb4efb26bb71811b509a9354ba132cba1cda/detection) |
+| 0.16.0 Android APK | [0 / 67 detections](https://www.virustotal.com/gui/file/4fdd3df8fe6780935c63f3bcebd3093cc11476d03a870e861fc6e98f81335b79/detection) |
+| 0.16.0 Windows EXE inside the ZIP | [2 / 71 detections — investigation unresolved](https://www.virustotal.com/gui/file/4014d703b1c9f5e6ab607319d4f73e281e9c04f7a417a03f0a16d08cc8fa33b0/detection) |
 
-Results were recorded on 2026-10-15 for 0.12.0 and can change. Microsoft reported Trojan:Win32/Wacatac.B!ml; SecureAge reported Malicious. Whether these are false positives has not been established. Avoid running the Windows binary until investigated. No result is a guarantee of safety.
+For the 0.16.0 EXE, Microsoft reported **Trojan:Win32/Wacatac.B!ml** and SecureAge reported **Malicious**. Whether these are false positives has not been established. Avoid running the Windows binary until investigated.
+
+The APK report also lists two timeouts (Skyhigh and TEHTRIS) and six engines unable to process the file type. Those outcomes are not clean results. Counts and verdicts can change; the linked reports are authoritative. No result is a guarantee of safety, and results for other versions do not apply to these files.
 
 ## Source finding
 

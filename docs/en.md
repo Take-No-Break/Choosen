@@ -6,7 +6,7 @@ Swipe your photos, Tinder-style. Find your favorites!
 
 [⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Windows-x64.zip)
 
-⚠️ 0.16.0 has not been scanned on VirusTotal yet. For 0.12.0: Windows 2/71 detections, investigation pending; Android 0/68. [Read the scan results](../SECURITY-CHECKS.md).
+⚠️ VirusTotal results for 0.16.0, recorded 2026-10-21: Windows 2/71 detections, investigation unresolved; Android 0/67. [Read the scan results](../SECURITY-CHECKS.md).
 
 ## Like it? Love it? Pass?
 

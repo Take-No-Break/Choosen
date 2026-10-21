@@ -15,7 +15,7 @@ Choosen helps you work through a photo collection one picture at a time. Choose 
 
 Android 10+ / ARM64 · Windows x64 + Microsoft Edge
 
-⚠️ 0.16.0 has not been scanned on VirusTotal yet. The recorded results are for 0.12.0: Windows **2/71 detections** (investigation pending), Android **0/68**. [Read the results before downloading](SECURITY-CHECKS.md).
+⚠️ VirusTotal results for **0.16.0**, recorded 2026-10-21: Windows **2/71 detections** (investigation unresolved), Android **0/67**. [Read the results before downloading](SECURITY-CHECKS.md).
 
 
 ## Start with your photo folders

@@ -6,7 +6,7 @@
 
 [⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Windows-x64.zip)
 
-⚠️ 0.16.0はまだVirusTotalで検査していません。0.12.0の結果は、Windows版が2/71件の検出（調査中）、Android版が0/68件です。[検査結果](../SECURITY-CHECKS.md)をご確認ください。
+⚠️ 0.16.0のVirusTotal検査結果（2026-10-21）：Windows版は2/71件の検出（未解決・調査中）、Android版は0/67件です。[検査結果](../SECURITY-CHECKS.md)をご確認ください。
 
 ## 好き？それともパス？
 

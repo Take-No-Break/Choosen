@@ -6,7 +6,7 @@ Deslize suas fotos como no Tinder e descubra suas favoritas!
 
 [⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Windows-x64.zip)
 
-⚠️ A versão 0.16.0 ainda não foi analisada no VirusTotal. Na 0.12.0: Windows 2/71 detecções, ainda em investigação; Android 0/68. [Veja os resultados](../SECURITY-CHECKS.md).
+⚠️ Resultados do VirusTotal para a versão 0.16.0, registrados em 2026-10-21: Windows 2/71 detecções, ainda em investigação; Android 0/67. [Veja os resultados](../SECURITY-CHECKS.md).
 
 ## Gostou, amou ou passou?
 
