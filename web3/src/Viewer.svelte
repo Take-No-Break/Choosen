@@ -17,6 +17,8 @@
   import { feather } from './lib/feather';
   import { svg } from './ui/icons';
   import { pairOf, pinchZoom, NO_ZOOM, Taps, type Pair, type Zoom } from './lib/gesture';
+  import { NO_PAGE, pagesOf, pageOf, shownOf, stepPage } from './lib/pages';
+  import { PageTaps } from './lib/taps';
 
   // items: the gallery's whole list, a slot empty until its page is loaded (onneed(i) asks for it)
   let {
@@ -31,10 +33,23 @@
   let index = $state(start); // where it opens; then it moves on its own
   let ready = $state(false);
   const card = $derived(items[index]);
+  // a work of several pages: the page on screen (Shift, ↓ / ↑, . / ,, a tap or the badge turns it; a
+  // rating still goes to the whole work)
+  let flipAt = $state.raw(NO_PAGE);
+  const pages = $derived(pagesOf(card));
+  const page = $derived(pageOf(card, flipAt));
+  const pageTaps = new PageTaps();
+  function flip(d: number) {
+    if (!card || !pages) return;
+    flipAt = { fp: card.fp, k: stepPage(page, pages.length, d) };
+    pageTaps.turned(performance.now());
+    setZoom(NO_ZOOM, false);
+  }
 
   function go(d: number) {
     const n = index + d;
     if (n < 0 || n >= items.length) return;
+    pageTaps.cancel();
     index = n;
     ready = false;
     if (!items[n] || !items[Math.min(items.length - 1, n + 10)]) onneed(n);
@@ -90,7 +105,13 @@
   function wake() {
     idle = false;
     clearTimeout(idleTimer);
-    idleTimer = window.setTimeout(() => ((idle = true), (editing = false)), playing ? 2200 : 3500); // the choices close with the buttons
+    idleTimer = window.setTimeout(quiet, playing ? 2200 : 3500); // the choices close with the buttons
+  }
+  /** A few quiet seconds: the buttons step aside, unless a mouse rests on the rating choices (or they have the focus). */
+  function quiet() {
+    if (editing && viewer?.querySelector('.edit:hover, .history:hover, .edit:focus-within')) return void wake();
+    idle = true;
+    editing = false;
   }
 
   // ---- the picture's ratings, oldest first, with the points after each (beside 秒数)
@@ -153,6 +174,13 @@
     void outbox.push({ id: c.id, fp: c.fp, a, cid: newCid(), replace: !replace ? '' : older || 'latest' });
   }
   let chosen = $state(-1); // the history entry the choices change (-1: the newest, or none yet)
+  /** A mouse wheel scrolls the history row sideways (its older entries), when it is longer than its room. */
+  function historyWheel(e: WheelEvent) {
+    const row = e.currentTarget as HTMLElement;
+    if (row.scrollWidth <= row.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    row.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }
   /** The history row scrolls sideways; it shows its newest end, also when a rating is added. */
   function toEnd(node: HTMLElement, _n: number) {
     const go = () => (node.scrollLeft = node.scrollWidth);
@@ -186,12 +214,17 @@
       new Image().src = imgUrl(c);
       new Image().src = thumbUrl(c, 320); // its glow, there together with the picture
     }
+    if (pages) new Image().src = imgUrl(pages[stepPage(page, pages.length, 1)]); // the next page
   });
 
   function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') onclose();
+    if (e.key === 'Escape' && editing) editing = false; // the choices first, then the view
+    else if (e.key === 'Escape') onclose();
     else if (e.key === 'ArrowRight') go(1);
     else if (e.key === 'ArrowLeft') go(-1);
+    else if (pages && (e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && !e.ctrlKey && !e.altKey && !e.metaKey) flip(1);
+    else if (pages && (e.key === 'ArrowDown' || e.code === 'Period' || e.key === 'PageDown')) flip(1);
+    else if (pages && (e.key === 'ArrowUp' || e.code === 'Comma' || e.key === 'PageUp')) flip(-1);
     else if (e.code === 'Space') void play(!playing);
     else return;
     e.preventDefault();
@@ -221,10 +254,15 @@
   }
   $effect(() => {
     void index;
-    if (viewer) untrack(() => setZoom(NO_ZOOM, false));
+    untrack(() => {
+      flipAt = NO_PAGE;
+      pageTaps.reset();
+      if (viewer) setZoom(NO_ZOOM, false);
+    });
   });
   function down(e: PointerEvent) {
     wake();
+    pageTaps.cancel(); // another touch: the waiting tap was not a lone one
     sx = e.clientX;
     sy = e.clientY;
     moved = 0;
@@ -273,8 +311,18 @@
       if (far && e.type !== 'pointercancel') onclose(); // swiped up or down: closed
       return;
     }
-    if ((e.target as Element | null)?.closest?.('button')) return; // a button's own tap, not the picture's
-    const n = moved < 10 && Math.abs(e.clientY - sy) < 10 ? taps.tap(e.clientX, e.clientY, e.timeStamp) : 0;
+    // a button's own tap, or a tap on the controls around them (the choices, the history, the
+    // names), is not the picture's; nor is a mouse's right or middle button
+    if ((e.target as Element | null)?.closest?.('button, .show, .edit, .info, .history')) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const isTap = moved < 10 && Math.abs(e.clientY - sy) < 10;
+    const lone = isTap && e.pointerType !== 'mouse' && !!pages && !bare && zoom.s <= 1.01 && e.type !== 'pointercancel';
+    if (lone && pageTaps.turning(e.timeStamp)) return void (taps.reset(), flip(1));
+    const n = isTap ? taps.tap(e.clientX, e.clientY, e.timeStamp) : 0;
+    if (n === 1 && lone) {
+      const c = card;
+      pageTaps.later(() => card === c && (flip(1), true));
+    } else if (n >= 2) pageTaps.cancel();
     const tapped = n === 2;
     if (bare && n === 1 && zoom.s <= 1.01 && e.type !== 'pointercancel') return void onclose(); // a tap: back
     if (pan) {
@@ -319,24 +367,29 @@
   onpointercancel={up}
 >
   {#if card}
+    {@const pic = shownOf(card, page)}
     {#key card.id}
-      <img class="fill" src={thumbUrl(card, 64)} alt="" />
+      <img class="fill" src={thumbUrl(pic, 64)} alt="" />
       <div class="waves"></div>
-      <img class="glow" class:ready class:kb={playing} src={thumbUrl(card, 320)} alt="" />
-      <img class="lqip feather" class:ready src={thumbUrl(card, 320)} alt="" use:feather />
-      <img class="photo feather" class:ready class:kb={playing} src={imgUrl(card)} alt="" onload={() => (ready = true)} draggable="false" use:feather />
+      <img class="glow" class:ready class:kb={playing} src={thumbUrl(pic, 320)} alt="" />
+      <img class="lqip feather" class:ready src={thumbUrl(pic, 320)} alt="" use:feather />
+      <img class="photo feather" class:ready class:kb={playing} src={imgUrl(pic)} alt="" onload={() => (ready = true)} draggable="false" use:feather />
     {/key}
     <div class="info">
       <div class="place">{placeOf(card.dir)}</div>
-      <div class="name">{card.name}</div>
+      <div class="name">{pic.name}</div>
     </div>
+    {#if pages}
+      <!-- which page of the work is on screen; a tap (or click) turns to the next one -->
+      <button class="pg num" title={t('次のページ（Shift / タップ）')} onclick={() => flip(1)}>{@html svg('layers', 13)}{page + 1} / {pages.length}</button>
+    {/if}
   {/if}
   <div class="edge-shade" aria-hidden="true"></div>
   <button class="close" title={t('閉じる')} onclick={onclose}>{@html svg('x', 22)}</button>
   <div class="show">
     {#if !bare && card}
       <!-- each rating is its own button: a tap opens the choices for that one (the newest by default) -->
-      <div class="history num" class:open={editing} class:pending={pending > 0} role="group" aria-label={t('評価を変える')} use:toEnd={history.length}>
+      <div class="history num" class:open={editing} class:pending={pending > 0} role="group" aria-label={t('評価を変える')} use:toEnd={history.length} onwheel={historyWheel}>
         {#each history as h, at (at)}
           {@const sign = SIGN[h.a] ?? SIGN.D}
           <button class="ev" class:chosen={editing && chosen === at} style:color={sign[1]} disabled={!historyReady} title={t('この評価を変える')} onclick={() => pick(at)}
@@ -458,6 +511,29 @@
     to {
       scale: 1.06;
     }
+  }
+  /* a work's page badge, top left (the position counter is elsewhere): it turns to the next page */
+  .pg {
+    position: absolute;
+    top: calc(var(--safe-top, env(safe-area-inset-top, 0px)) + 14px);
+    left: 14px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 34px;
+    padding: 4px 12px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 400ms;
+  }
+  .viewer.idle .pg {
+    opacity: 0;
   }
   /* Screen shading stays while controls hide, independent of picture zoom. */
   .edge-shade {

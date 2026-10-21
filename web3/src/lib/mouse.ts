@@ -28,6 +28,12 @@ export function mouseMap(mode: number, custom = ''): Record<MouseInput, MouseCmd
   return m;
 }
 
+const LEGEND: MouseCmd[] = ['grab', 'flick', 'like', 'super', 'pass', 'archive', 'back', 'fwd'];
+/** A mode's commands with the inputs that run them, for the settings' legend. */
+export function mouseLegend(m: Record<MouseInput, MouseCmd>): [MouseCmd, MouseInput[]][] {
+  return LEGEND.map((c) => [c, INPUTS.filter((i) => m[i] === c)] as [MouseCmd, MouseInput[]]).filter(([, i]) => i.length > 0);
+}
+
 /** PointerEvent.button -> input (0 left, 1 middle, 2 right, 3 back side button, 4 forward side button). */
 export function buttonInput(button: number): MouseInput | null {
   return (['left', 'middle', 'right', 'side1', 'side2'] as const)[button] ?? null;

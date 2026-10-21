@@ -24,6 +24,11 @@ std::string journalField(const std::vector<std::string>& f, const char* key) {
 void loadJournal() {
   std::string s;
   if (!readFileBytes(journalPath(), s)) return;
+  // a correction's lines: its X lines, then its new ratings, with one tick and one time; the
+  // replaced rating of each picture leads to the new one there (replacedBy)
+  uint64_t xTick = UINT64_MAX;
+  int64_t xMs = 0;
+  std::vector<std::pair<uint64_t, uint64_t>> xTargets;  // (fp, target tick) of the latest X lines
   size_t a = 0;
   while (a < s.size()) {
     size_t b = s.find('\n', a);
@@ -52,12 +57,17 @@ void loadJournal() {
       items.push_back(std::move(ph));
     }
     Item& item = items[idx];
+    if (t != xTick || ms != xMs) xTargets.clear();  // not the same request as the X lines before
     if (act == 'X') {
+      // a cancel's tick is used up too: a rating after a restart must never share it
+      tick = std::max(tick, t + 1);
+      if (t != xTick || ms != xMs) xTick = t, xMs = ms;
       std::string target = journalField(f, "target");
       if (target.empty()) {
         if (!item.ev.empty()) item.ev.pop_back();
       } else {
         uint64_t tt = std::strtoull(target.c_str(), nullptr, 10);
+        if (t > tt) xTargets.push_back({fp, tt});
         for (size_t k = item.ev.size(); k-- > 0;)
           if (item.ev[k].tick == tt) {
             item.ev.erase(item.ev.begin() + (ptrdiff_t)k);
@@ -68,6 +78,8 @@ void loadJournal() {
     }
     // L like, S super, D pass, K hold, A archive (never show again), R restore from the archive
     if (act != 'L' && act != 'S' && act != 'D' && act != 'K' && act != 'A' && act != 'R') continue;
+    for (const auto& [xfp, xt] : xTargets)
+      if (xfp == fp) replacedBy[{fp, xt}] = t;  // this rating is the correction of that one
     std::string cid = journalField(f, "cid");
     if (!cid.empty()) {
       auto& refs = cidMap[cid];

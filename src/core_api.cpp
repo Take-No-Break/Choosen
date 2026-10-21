@@ -43,6 +43,13 @@ std::string itemJson(int i, const char* kind, int stateOf, const std::vector<int
   return o;
 }
 
+// The card of any of a work's pages: the whole work (cover, the lead page's state, the pages).
+static std::string cardJson(int anyPage) {
+  const int w = items[anyPage].work;
+  if (w < 0) return itemJson(anyPage, "");
+  return itemJson(works[w].pages[0], "", leadOf(works[w]), &works[w].pages);
+}
+
 // Ids are positions in `items`, which can differ between runs; the fingerprint is the real identity.
 int resolveItem(int id, const std::string& fpHex) {
   uint64_t fp = fpHex.size() == 16 ? parseHex64(fpHex) : 0;
@@ -348,11 +355,6 @@ std::string apiRate(int id, const std::string& fpHex, char a, const std::string&
     status = 404;
     return "{\"error\":\"unknown image\"}";
   }
-  auto cardJson = [](int anyPage) {
-    const int w = items[anyPage].work;
-    if (w < 0) return itemJson(anyPage, "");
-    return itemJson(works[w].pages[0], "", leadOf(works[w]), &works[w].pages);
-  };
   if (!cid.empty() && cidMap.count(cid)) {  // a retry of a rating that was already stored
     return "{\"saved\":true,\"duplicate\":true,\"tick\":" + std::to_string(cidMap[cid].front().tick) +
            ",\"item\":" + cardJson(idx) + ",\"chain\":[]}";
@@ -389,7 +391,13 @@ std::string apiRate(int id, const std::string& fpHex, char a, const std::string&
   if (!replaceCid.empty()) {
     auto r = cidMap.find(replaceCid);
     if (r != cidMap.end()) {
-      targets = r->second;
+      // as they stand now: a rating corrected elsewhere since (the full view's "latest") is found
+      // through the correction that replaced it, so this replaces that one instead of adding to it
+      for (const CidRef& ref : r->second) {
+        auto f = byFp.find(ref.fp);
+        const uint64_t now = f == byFp.end() ? kNoTick : currentTick(items[f->second], ref.tick);
+        if (now != kNoTick) targets.push_back({ref.fp, now});
+      }
     } else if (replaceCid == "latest" || replaceCid.rfind("tick-", 0) == 0) {
       // "latest": the card's newest rating at the moment this request is applied (the gallery's full
       // view corrects that one; requests arrive in order, so quick corrections replace one another,
@@ -461,6 +469,7 @@ std::string apiRate(int id, const std::string& fpHex, char a, const std::string&
       if (it.ev[k].tick == t.tick) {
         visibility |= it.ev[k].a == 'A' || it.ev[k].a == 'R';
         it.ev.erase(it.ev.begin() + (ptrdiff_t)k);
+        replacedBy[{t.fp, t.tick}] = evTick;  // the new rating below is on this picture too
         replaced = true;
         break;
       }
@@ -556,13 +565,14 @@ std::string apiRevoke(const std::string& cid, int& status) {
   }
   auto r = cidMap.find(cid);
   if (r == cidMap.end()) return "{\"revoked\":0}";
-  // only the events that still exist (a later correction may have revoked some already)
+  // the ratings as they stand now: one corrected since (also on another screen or device) is
+  // found through the correction that replaced it; one cancelled already is gone
   std::vector<CidRef> targets;
   for (const CidRef& t : r->second) {
     auto f = byFp.find(t.fp);
     if (f == byFp.end()) continue;
-    for (const Event& e : items[f->second].ev)
-      if (e.tick == t.tick) targets.push_back(t);
+    const uint64_t now = currentTick(items[f->second], t.tick);
+    if (now != kNoTick) targets.push_back({t.fp, now});
   }
   if (targets.empty()) {
     cidMap.erase(r);
@@ -637,12 +647,15 @@ std::string apiPicks() {
   loadPicks();
   std::string o = "{\"items\":[";
   bool first = true;
+  std::unordered_set<int> shown;  // works: two pages picked while ungrouped are one card once grouped
   for (auto p = picks.rbegin(); p != picks.rend(); ++p) {
     auto f = byFp.find(p->first);
     if (f == byFp.end() || !items[f->second].present) continue;  // moved or deleted: kept, not shown
+    const int w = items[f->second].work;
+    if (w >= 0 && !shown.insert(w).second) continue;
     if (!first) o += ',';
     first = false;
-    o += itemJson(f->second, "");
+    o += cardJson(f->second);  // a work with its pages, as in the gallery
   }
   return o + "]}";
 }
@@ -655,9 +668,18 @@ std::string apiPick(const std::string& fpHex, bool add, int& status) {
     return "{\"error\":\"bad request\"}";
   }
   loadPicks();
-  auto at = std::find_if(picks.begin(), picks.end(), [&](const auto& p) { return p.first == fp; });
-  if (add && at == picks.end()) picks.push_back({fp, nowMs()});
-  else if (!add && at != picks.end()) picks.erase(at);
+  // a work is one pick, as it is listed: any of its saved pages stands for it (pages picked while
+  // ungrouped), so adding the cover adds nothing more and taking it out takes them all out
+  auto f = byFp.find(fp);
+  const int w = f != byFp.end() ? items[f->second].work : -1;
+  auto same = [&](const std::pair<uint64_t, int64_t>& p) {
+    if (p.first == fp) return true;
+    auto g = byFp.find(p.first);
+    return w >= 0 && g != byFp.end() && items[g->second].work == w;
+  };
+  const bool picked = std::any_of(picks.begin(), picks.end(), same);
+  if (add && !picked) picks.push_back({fp, nowMs()});
+  else if (!add && picked) picks.erase(std::remove_if(picks.begin(), picks.end(), same), picks.end());
   else return "{\"ok\":true,\"count\":" + std::to_string(picks.size()) + "}";
   if (!savePicks()) {
     status = 500;

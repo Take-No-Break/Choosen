@@ -295,7 +295,14 @@
   let readyBackground = $state.raw<Card | undefined>();
   const handover = new Handover<Slot>((l) => (leaving = l));
   function letGo(old: Slot[], at?: number[]) {
-    if (!browse) handover.letGo(old, at);
+    if (browse) return;
+    // only cells that were shown stay on their way out: one replaced before its picture came (keys
+    // held down, fast taps) was never seen, and keeping it would only pile up picture loads
+    const keep = old.map((s, k) => [s, at?.[k] ?? k] as const).filter(([s]) => handover.isReady(s.key));
+    handover.letGo(
+      keep.map(([s]) => s),
+      keep.map(([, p]) => p),
+    );
   }
   /** A cell has all its pictures (or waited long enough): once every current one has, the old go. */
   function cellReady(node: HTMLElement, key: number) {
@@ -798,7 +805,18 @@
     },
   });
   function cardAt(x: number, y: number): Card | undefined {
-    const id = (document.elementFromPoint(x, y) as Element | null)?.closest<HTMLElement>('.cell')?.dataset.id;
+    const cell = (document.elementFromPoint(x, y) as Element | null)?.closest<HTMLElement>('.cell');
+    if (cell && !browse && !cell.classList.contains('ready')) {
+      // still coming in (invisible): the picture on screen there is an outgoing one
+      for (const o of cellsEl?.querySelectorAll<HTMLElement>(':scope > .cell.out.ready:not(.gone)') ?? []) {
+        const r = o.getBoundingClientRect();
+        if (x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
+        const s = leaving.find((l) => String(l.key) === o.dataset.key);
+        if (s) return s.card;
+      }
+      return undefined;
+    }
+    const id = cell?.dataset.id;
     return id === undefined ? undefined : items.find((c) => String(c.id) === id);
   }
   interface Pop {
@@ -851,10 +869,21 @@
     }
     if (left + stripEl.clientWidth > stripEl.scrollWidth - stripEl.clientWidth * 1.5) void page();
   }
+  // a mouse wheel (or a touchpad's vertical swipe) turns the strip a column (パズル: a page) at a time:
+  // a free scroll of a notch would be pulled back by the snap whenever the pictures are wide
+  let wheelStep = 0;
+  let wheelStepAt = -1e9;
   function onStripWheel(e: WheelEvent) {
     if (!stripEl || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-    stripEl.scrollLeft += e.deltaY; // a mouse wheel scrolls it sideways
     e.preventDefault();
+    if (auto) return void (stripEl.scrollLeft += e.deltaY); // flowing: it moves along freely
+    if (e.timeStamp - wheelStepAt > 400) wheelStep = 0; // a new turn of the wheel
+    wheelStep += e.deltaY;
+    if (Math.abs(wheelStep) < 50 || e.timeStamp - wheelStepAt < 220) return; // one step per notch
+    wheelStepAt = e.timeStamp;
+    const d = wheelStep > 0 ? 1 : -1;
+    wheelStep = 0;
+    stepStrip(d);
   }
   function onStripDown(e: PointerEvent) {
     pressAt = null;
@@ -1362,6 +1391,22 @@
   .cells.c4 > .cell {
     grid-row: var(--r);
     grid-column: var(--c);
+  }
+  .cells.c3 {
+    grid-template: repeat(3, 1fr) / 1fr;
+  }
+  .cells.c3 > .cell {
+    grid-row: var(--r);
+    grid-column: 1;
+  }
+  @media (orientation: landscape) {
+    .cells.c3 {
+      grid-template: 1fr / repeat(3, 1fr);
+    }
+    .cells.c3 > .cell {
+      grid-row: 1;
+      grid-column: var(--c);
+    }
   }
   .cells.c1 > .cell {
     grid-area: 1 / 1;

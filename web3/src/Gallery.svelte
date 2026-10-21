@@ -631,6 +631,7 @@
                 {#if c.rated}
                   <span class="pts num" style:color={color(c)}>{@html svg(badge(c), 12)}<b>{fmtPts(c.p, st.overPoints)}</b></span>
                 {/if}
+                {#if c.pages && c.pages.length > 1}<span class="np num" title={t('{0} ページ', c.pages.length)}>{@html svg('layers', 11)}{c.pages.length}</span>{/if}
                 {#if picked.size}<span class="tick" class:on={picked.has(c.id)}>{#if picked.has(c.id)}{@html svg('check', 14)}{/if}</span>{/if}
               </button>
             {:else}
@@ -1028,6 +1029,19 @@
     color: var(--accent);
     background: rgba(16, 20, 26, 0.6);
     border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  /* a work of several pages: how many (the full view turns them) */
+  .np {
+    position: absolute;
+    top: 5px;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: #f2f3f5;
+    font-size: 11.5px;
+    font-weight: 600;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.45));
   }
   .pts {
     position: absolute;

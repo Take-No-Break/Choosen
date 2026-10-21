@@ -447,6 +447,46 @@ int selftest() {
     CHECK(rate("P (5)/100_p0 - t.jpg", 'S', "w5", "w4").status == 200, "correct it while ungrouped");
     CHECK(item("P (5)/100_p2 - t.jpg").last == 'S' && item("P (5)/100_p1 - t.jpg").last == 'S',
           "every page of the old rating got the correction");
+
+    // one rating of a work, its pages corrected one by one once ungrouped: the rating's id still
+    // leads to every page's correction (also after a restart), so cancelling it withdraws them all
+    const int e0 = item("P (5)/100_p0 - t.jpg").events, e1 = item("P (5)/100_p1 - t.jpg").events,
+              e2 = item("P (5)/100_p2 - t.jpg").events;
+    setGroup(1);
+    CHECK(rate("P (5)/100_p0 - t.jpg", 'L', "w6").status == 200, "a work rated once more");
+    setGroup(0);
+    CHECK(rate("P (5)/100_p0 - t.jpg", 'S', "w6a", "latest").status == 200 &&
+              rate("P (5)/100_p1 - t.jpg", 'D', "w6b", "latest").status == 200,
+          "two of its pages corrected one by one");
+    restart();
+    int st = 200;
+    CHECK(has(apiRevoke("w6", st), "\"revoked\":3"), "cancelling the work's rating finds every page's rating now");
+    CHECK(item("P (5)/100_p0 - t.jpg").events == e0 && item("P (5)/100_p1 - t.jpg").events == e1 &&
+              item("P (5)/100_p2 - t.jpg").events == e2,
+          "and withdraws them all: %d/%d/%d events (want %d/%d/%d)", item("P (5)/100_p0 - t.jpg").events,
+          item("P (5)/100_p1 - t.jpg").events, item("P (5)/100_p2 - t.jpg").events, e0, e1, e2);
+    // the sub gallery lists a picked work as one card with its pages, and the card's own fingerprint
+    // (the cover) adds and removes the whole work, also when its pages were picked while ungrouped
+    st = 200;
+    const std::string w0 = item("P (5)/100_p0 - t.jpg").fp, w1 = item("P (5)/100_p1 - t.jpg").fp;
+    setGroup(0);
+    apiPick(w0, true, st);
+    apiPick(w1, true, st);
+    setGroup(1);
+    const std::string pk = apiPicks();
+    size_t withPages = 0;
+    for (size_t at = pk.find("\"pages\":["); at != std::string::npos; at = pk.find("\"pages\":[", at + 1)) ++withPages;
+    CHECK(st == 200 && withPages == 1 && has(pk, "100_p2 - t.jpg"), "a picked work comes with its pages, once: %.120s",
+          pk.c_str());
+    apiPick(w0, false, st);
+    CHECK(!has(apiPicks(), "100_p"), "taking a work out removes every saved page of it");
+    setGroup(0);
+    apiPick(w1, true, st);  // only a later page saved
+    setGroup(1);
+    CHECK(has(apiPicks(), "\"name\":\"100_p0 - t.jpg\""), "a work saved by a later page is listed by its cover");
+    CHECK(has(apiPick(w0, true, st), "\"count\":1"), "adding its cover adds nothing more");
+    apiPick(w0, false, st);
+    CHECK(!has(apiPicks(), "100_p"), "and the cover takes it out");
   }
 
   say("== archive (never show again)");
@@ -547,6 +587,71 @@ int selftest() {
           "the reset is kept in the journal");
     rmTree(lib + L"\\R (7)");
     rmTree(lib + L"\\Q (8)");
+    restart();
+  }
+
+  say("== a rating corrected elsewhere, then corrected or cancelled by its own id");
+  {
+    // the swipe screen keeps its rating's id; the gallery's full view corrects that rating with
+    // "latest" meanwhile; a later correction (or cancel) by the swipe's id must act on the rating
+    // that replaced it, never leave two
+    uint32_t s3 = 1300;
+    auto put3 = [&](const wchar_t* rel, size_t size) { writeRandom(lib + L"\\" + rel, size, s3++); };
+    put3(L"T (10)\\t1.jpg", 9700);
+    put3(L"T (10)\\t2.jpg", 9800);
+    restart();
+    auto ratings = [](const char* rel) {
+      const std::string h = apiHistory(item(rel).id, "");
+      int n = 0;
+      for (size_t at = h.find("\"a\":"); at != std::string::npos; at = h.find("\"a\":", at + 1)) n++;
+      return n;
+    };
+    CHECK(rate("T (10)/t1.jpg", 'L', "sw1").status == 200, "a swipe's like");
+    CHECK(rate("T (10)/t1.jpg", 'S', "fv1", "latest").status == 200, "the full view corrects it to super");
+    CHECK(rate("T (10)/t1.jpg", 'D', "sw2", "sw1").status == 200, "the swipe screen corrects its own rating");
+    DebugItem t1 = item("T (10)/t1.jpg");
+    CHECK(ratings("T (10)/t1.jpg") == 1 && t1.last == 'D', "one rating, the swipe's correction: %d ratings, last %c",
+          ratings("T (10)/t1.jpg"), t1.last ? t1.last : '-');
+    restart();
+    t1 = item("T (10)/t1.jpg");
+    CHECK(ratings("T (10)/t1.jpg") == 1 && t1.last == 'D', "the same after a restart: %d ratings, last %c",
+          ratings("T (10)/t1.jpg"), t1.last ? t1.last : '-');
+    int st = 200;
+    CHECK(has(apiRevoke("sw1", st), "\"revoked\":1") && ratings("T (10)/t1.jpg") == 0 && !item("T (10)/t1.jpg").rated,
+          "cancelling the swipe by its first id withdraws the rating that stands in for it");
+    // across a restart in between: corrected elsewhere, restart, then corrected by the old id
+    rate("T (10)/t2.jpg", 'L', "sw3");
+    rate("T (10)/t2.jpg", 'S', "fv2", "latest");
+    restart();
+    CHECK(rate("T (10)/t2.jpg", 'D', "sw4", "sw3").status == 200 && ratings("T (10)/t2.jpg") == 1 &&
+              item("T (10)/t2.jpg").last == 'D',
+          "after a restart the old id still leads to the correction: %d ratings", ratings("T (10)/t2.jpg"));
+    // a cancel's tick is never used again after a restart, so the cancelled rating's id cannot lead
+    // to a fresh rating; and an old journal where that happened (v0.12.0) does not link them either
+    rate("T (10)/t2.jpg", 'L', "sw8");
+    apiRevoke("sw8", st);
+    restart();
+    rate("T (10)/t2.jpg", 'S', "sw9");
+    CHECK(has(apiRevoke("sw8", st), "\"revoked\":0") && item("T (10)/t2.jpg").last == 'S',
+          "cancelling a cancelled rating again leaves the fresh one after a restart");
+    {
+      DebugItem t2 = item("T (10)/t2.jpg");
+      const std::string n = std::to_string(coreDebugTick() + 10), m = std::to_string(coreDebugTick() + 11);
+      // v0.12.0 after a restart: a cancel (X at m) and then a fresh rating that reused tick m, later
+      appendFileBytes(journal, n + "\t100\t" + t2.fp + "\tL\tx\tcid=old1\n" + m + "\t200\t" + t2.fp +
+                                   "\tX\tx\ttarget=" + n + "\n" + m + "\t300\t" + t2.fp + "\tL\tx\tcid=fresh1\n");
+      restart();
+      const int before = item("T (10)/t2.jpg").events;
+      CHECK(has(apiRevoke("old1", st), "\"revoked\":0") && item("T (10)/t2.jpg").events == before,
+            "a reused tick in an old journal is not taken for a correction");
+    }
+    // a cancelled rating stays cancelled: its id does not lead anywhere else
+    rate("T (10)/t1.jpg", 'L', "sw5");
+    apiRevoke("sw5", st);
+    rate("T (10)/t1.jpg", 'S', "sw6");
+    CHECK(rate("T (10)/t1.jpg", 'D', "sw7", "sw5").status == 200 && ratings("T (10)/t1.jpg") == 2,
+          "correcting a cancelled rating adds the new one and leaves the others: %d ratings", ratings("T (10)/t1.jpg"));
+    rmTree(lib + L"\\T (10)");
     restart();
   }
 

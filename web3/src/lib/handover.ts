@@ -41,6 +41,11 @@ export class Handover<T extends Keyed> {
     }, this.fadeMs);
   }
 
+  /** Whether a cell has had all its pictures (it was shown). */
+  isReady(key: number) {
+    return this.ready.has(key);
+  }
+
   /** A cell left the page. */
   forget(key: number) {
     this.ready.delete(key);

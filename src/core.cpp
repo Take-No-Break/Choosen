@@ -12,6 +12,18 @@ std::mutex rateMu;
 void (*g_journalHook)() = nullptr;
 
 std::unordered_map<std::string, std::vector<CidRef>> cidMap;  // one rating = one event per page
+std::map<std::pair<uint64_t, uint64_t>, uint64_t> replacedBy;
+
+uint64_t currentTick(const Item& it, uint64_t t) {
+  for (int hop = 0; hop < 1000; ++hop) {  // a chain of corrections (bounded: ticks only grow)
+    for (const Event& e : it.ev)
+      if (e.tick == t) return t;
+    auto r = replacedBy.find({it.fp, t});
+    if (r == replacedBy.end() || r->second <= t) return kNoTick;
+    t = r->second;
+  }
+  return kNoTick;
+}
 
 std::unordered_set<std::string> pendingCids;                  // ratings being written right now
 
@@ -400,6 +412,7 @@ void coreResetForTest() {
   sessionTick0 = 0;
   baselineDirty = true;
   cidMap.clear();
+  replacedBy.clear();
   backupWarning.clear();
   scanError.clear();
   tick = 0;

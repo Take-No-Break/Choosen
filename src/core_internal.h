@@ -129,6 +129,17 @@ extern std::mutex jmu;  // orders journal appends; always taken while holding mu
 extern std::mutex rateMu;
 extern void (*g_journalHook)();  // selftest only: runs during a rating's journal write
 extern std::unordered_map<std::string, std::vector<CidRef>> cidMap;  // one rating
+// A rating that a correction replaced, per picture: (fingerprint, its tick) -> the correction's tick,
+// where the correction put the new rating on that picture. So an id whose rating was corrected
+// elsewhere still leads to the rating that stands in for it now (currentTick). Per picture, because
+// one rating's pages share a tick and may be corrected one by one once ungrouped. A cancel has no
+// entry: its rating is simply gone.
+extern std::map<std::pair<uint64_t, uint64_t>, uint64_t> replacedBy;
+// The tick of the rating that stands in for `t` on this item now: `t` itself if it is still
+// there, else the correction that replaced it (and so on); kNoTick = none (cancelled, or never
+// there). Tick 0 is a real rating's tick.
+constexpr uint64_t kNoTick = UINT64_MAX;
+uint64_t currentTick(const Item& it, uint64_t t);
 extern std::unordered_set<std::string> pendingCids;                  // ratings being written right now
 extern std::string backupWarning;
 extern std::vector<Item> items;

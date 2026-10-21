@@ -10,6 +10,8 @@
   import { outbox } from './lib/ratings';
   import { Spring, Tracker, dragRotation, lean, release, throwVelocity, LETTER, type Verdict } from './lib/physics';
   import { commandFor, HOLD_MS } from './lib/keys';
+  import { NO_PAGE, pagesOf, pageOf, shownOf, stepPage } from './lib/pages';
+  import { PageTaps } from './lib/taps';
   import { mouseMap, buttonInput, Flick, RATING_CMDS, type MouseCmd } from './lib/mouse';
   import { Ambient, paletteOf } from './lib/ambient';
   import { COLORS, type Intensity } from './lib/burst';
@@ -53,6 +55,7 @@
     vx: number;
     vy: number;
     zoomed: number; // the scale its picture was drawn at (a quiet moment brings it closer)
+    shown: { id: number; fp: string }; // the page on screen when it was thrown
   }
 
   const VERDICT_OF: Record<string, Verdict> = { L: 'like', S: 'super', D: 'pass', A: 'archive' };
@@ -147,6 +150,24 @@
   });
 
   const current = $derived(redo !== null ? history[redo]?.card ?? null : queue[0] ?? null);
+  // ---- a work of several pages: the page on screen (a rating still goes to the whole work, the card)
+  let flipAt = $state.raw(NO_PAGE);
+  const pages = $derived(pagesOf(current));
+  const page = $derived(pageOf(current, flipAt));
+  const pageTaps = new PageTaps();
+  function flip(d: number) {
+    const c = current;
+    if (!c || !pages || feedBusy) return;
+    flipAt = { fp: c.fp, k: stepPage(page, pages.length, d) };
+    pageTaps.turned(performance.now());
+    resetZoom(false);
+  }
+  // the next page is decoded before it is asked for (one ahead only: a long work stays cheap)
+  $effect(() => {
+    const ps = pages;
+    const k = page; // read here: each turn decodes the one after it
+    if (ps) untrack(() => preloadPage(ps[stepPage(k, ps.length, 1)]));
+  });
   const behind = $derived(redo !== null ? queue.slice(0, 2) : queue.slice(1, 3));
   const showButtons = $derived(buttons ?? st.swipeButtons !== false);
   $effect(() => onbuttons?.(showButtons));
@@ -193,15 +214,22 @@
     }
   }
 
-  function preload(c: Card) {
-    if (decoded.has(c.id)) return;
+  function preload(c: { id: number; fp: string }) {
+    if (!decoded.has(c.id)) decodeInto(decoded, 12, c);
+  }
+  // pages are kept apart: turning through a long work never pushes the next cards out of `decoded`
+  const pageDecoded = new Map<number, HTMLImageElement>();
+  function preloadPage(c: { id: number; fp: string }) {
+    if (!decoded.has(c.id) && !pageDecoded.has(c.id)) decodeInto(pageDecoded, 3, c);
+  }
+  function decodeInto(into: Map<number, HTMLImageElement>, keep: number, c: { id: number; fp: string }) {
     const img = new Image();
     img.src = imgUrl(c);
     img
       .decode()
       .then(() => {
-        decoded.set(c.id, img);
-        while (decoded.size > 12) decoded.delete(decoded.keys().next().value!);
+        into.set(c.id, img);
+        while (into.size > keep) into.delete(into.keys().next().value!);
       })
       .catch(() => {});
   }
@@ -255,6 +283,7 @@
 
   function onPointerDown(e: PointerEvent) {
     if ((e.target as Element).closest('button') || atEdge(e)) return;
+    pageTaps.cancel(); // another touch: the waiting tap was not a lone one
     if (fingerDown(e, topEl)) return;
     if (panDown(e)) return;
     if (e.pointerType === 'mouse') {
@@ -313,11 +342,18 @@
 
   function finishDrag(now: number) {
     if (!drag) return;
+    const touch = drag.touch && now - down.t < 350; // a quick touch (a long still hold is no tap)
     cancelDrag();
     if (maxMove <= TAP_SLOP) {
       springBack();
+      // a work: a lone tap turns its page (taps while turning turn at once and never rate)
+      if (touch && pages && pageTaps.turning(now)) return void (taps.reset(), flip(1));
       const n = taps.tap(down.x, down.y, now);
-      if (n === 2 && current) {
+      if (n === 1 && touch && pages) {
+        const card = current;
+        pageTaps.later(() => current === card && !cardPending && (flip(1), true));
+      } else if (n === 2 && current) {
+        pageTaps.cancel();
         pop('like', down.x, down.y);
         const card = current;
         clearTimeout(cardPending?.timer);
@@ -375,7 +411,11 @@
   // a new picture on screen starts at its own size
   $effect(() => {
     void current?.id;
-    untrack(() => resetZoom(false));
+    untrack(() => {
+      resetZoom(false);
+      flipAt = NO_PAGE;
+      pageTaps.reset();
+    });
   });
   /** One finger on a zoomed picture moves it; a double tap there resets the zoom. True if it did. */
   function panDown(e: PointerEvent): boolean {
@@ -417,6 +457,7 @@
       void glide(0, 200);
     }
     taps.reset();
+    pageTaps.cancel();
     pan = null;
     const [a, b] = [...fingers.values()];
     const r = el.getBoundingClientRect();
@@ -481,10 +522,10 @@
 
   // ---- taps: double tap = 好評 (both layouts), triple tap = 超好評 (scroll layout)
   const taps = new Taps();
-  let down = { x: 0, y: 0 };
+  let down = { x: 0, y: 0, t: 0 };
   let maxMove = 0;
   function startTap(e: PointerEvent) {
-    down = { x: e.clientX, y: e.clientY };
+    down = { x: e.clientX, y: e.clientY, t: e.timeStamp };
     maxMove = 0;
   }
   function moveTap(e: PointerEvent) {
@@ -535,7 +576,8 @@
     const vel = throwVelocity(v, vx, vy);
     const layers = topEl?.querySelector<HTMLElement>(':scope > .layers');
     const zoomed = layers ? parseFloat(getComputedStyle(layers).scale) || 1 : 1; // after a quiet moment
-    ghosts = [...ghosts, { key: ++ghostKey, card, verdict: v, x: dx, y: dy, r: rot, zoomed, ...vel }];
+    pageTaps.cancel();
+    ghosts = [...ghosts, { key: ++ghostKey, card, shown: shownOf(card, page), verdict: v, x: dx, y: dy, r: rot, zoomed, ...vel }];
     sweepFlash(v);
     light(v);
     navigator.vibrate?.(8);
@@ -769,6 +811,7 @@
   function feedDown(e: PointerEvent) {
     wake();
     if ((e.target as Element).closest('button') || feedBusy || !current || atEdge(e)) return;
+    pageTaps.cancel();
     if (fingerDown(e, deck.querySelector<HTMLElement>('.slide.cur'))) return;
     if (panDown(e)) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -794,8 +837,14 @@
     const f = feed;
     feed = null;
     if (maxMove <= TAP_SLOP) {
+      const lone = e.pointerType !== 'mouse' && e.timeStamp - down.t < 350 && !!pages && !pending;
+      if (lone && pageTaps.turning(e.timeStamp)) return void (taps.reset(), flip(1));
       const n = taps.tap(e.clientX, e.clientY, e.timeStamp);
-      if (n === 2) {
+      if (n === 1 && lone) {
+        const card = current;
+        pageTaps.later(() => current === card && !pending && (flip(1), true));
+      } else if (n === 2) {
+        pageTaps.cancel();
         pop('like', e.clientX, e.clientY);
         if (prefs.autoNext) feedCommit('like', 380);
         else rateStay('like');
@@ -919,6 +968,12 @@
     }
     const cmd = commandFor(st.keyMode, e.code);
     if (!cmd) return;
+    if (cmd === 'pageNext' || cmd === 'pagePrev') {
+      // only a work's pages; Alt+Shift (input language), Ctrl+Shift+... and Win+Shift+S are not ours
+      if (e.repeat || e.ctrlKey || e.altKey || e.metaKey || !pages) return;
+      e.preventDefault();
+      return flip(cmd === 'pageNext' ? 1 : -1);
+    }
     e.preventDefault();
     if (cmd === 'likeHold') {
       if (!e.repeat && !holdTimer) holdTimer = window.setTimeout(() => ((holdTimer = 0), decide('super')), HOLD_MS);
@@ -1076,6 +1131,11 @@
   const tags = (c: Card) => [c.rated ? t('{0}回目', c.n + 1) : t('新規'), ...(c.rated ? [fmtPts(c.p, st.overPoints)] : [])];
 </script>
 
+{#snippet pageBadge()}
+  <!-- a work of several pages: which page is on screen; a tap (or click) turns to the next one -->
+  <button class="pg num" title={t('次のページ（Shift / タップ）')} onclick={() => flip(1)}>{@html svg('layers', 13)}{page + 1} / {pages?.length}</button>
+{/snippet}
+
 <svelte:window onkeydown={onKeyDown} onkeyup={onKeyUp} />
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -1125,11 +1185,13 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="deck feed" bind:this={deck} onpointerdown={feedDown} onpointermove={feedMove} onpointerup={feedUp} onpointercancel={feedUp} onwheel={onWheel}>
     {#each slides as s (s.card.id)}
+      {@const pic = s.k === 0 ? shownOf(s.card, page) : s.card}
       <div class="card slide" class:cur={s.k === 0} style:--k={s.k}>
-        <img class="fill" src={thumbUrl(s.card, 64)} alt="" />
-        <img class="lqip" src={thumbUrl(s.card, 320)} alt="" />
-        <img class="photo" src={imgUrl(s.card)} alt="" use:loaded draggable="false" />
+        <img class="fill" src={thumbUrl(pic, 64)} alt="" />
+        <img class="lqip" src={thumbUrl(pic, 320)} alt="" />
+        <img class="photo" src={imgUrl(pic)} alt="" use:loaded draggable="false" />
         {#if s.k === 0}
+          {#if pages}{@render pageBadge()}{/if}
           <div class="badge">
             {#each VERDICTS as v}
               <span class="b {v}" style:color={COLORS[v]}>{@html svg(ICON_OF[v], 96)}</span>
@@ -1137,7 +1199,7 @@
           </div>
           <div class="meta" class:low={!showButtons} class:off={!prefs.info}>
             <div class="place">{placeOf(s.card.dir) || rootName || t('写真フォルダ')}</div>
-            <div class="name">{s.card.name}</div>
+            <div class="name">{pic.name}</div>
             <div class="tags">{#each tags(s.card) as t}<span class="num">{t}</span>{/each}</div>
           </div>
         {/if}
@@ -1197,6 +1259,7 @@
     {/each}
 
     {#if current}
+      {@const pic = shownOf(current, page)}
       {#key current.id}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
@@ -1209,10 +1272,11 @@
           <!-- the picture's layers: they come slowly closer in a quiet moment, inside the card (the card
                keeps its drag, the pictures their pinch zoom) -->
           <div class="layers">
-            <img class="fill" src={thumbUrl(current, 64)} alt="" />
-            <img class="lqip" src={thumbUrl(current, 320)} alt="" />
-            <img class="photo" class:ready={photoReady} src={imgUrl(current)} alt="" onload={() => (photoReady = true)} draggable="false" />
+            <img class="fill" src={thumbUrl(pic, 64)} alt="" />
+            <img class="lqip" src={thumbUrl(pic, 320)} alt="" />
+            <img class="photo" class:ready={photoReady} src={imgUrl(pic)} alt="" onload={() => (photoReady = true)} draggable="false" />
           </div>
+          {#if pages}{@render pageBadge()}{/if}
           <div class="glare"></div>
           <div class="rim"></div>
           <div class="badge">
@@ -1222,7 +1286,7 @@
           </div>
           <div class="meta" class:low={!showButtons} class:off={!prefs.info}>
             <div class="place">{placeOf(current.dir) || rootName || t('写真フォルダ')}</div>
-            <div class="name">{current.name}</div>
+            <div class="name">{pic.name}</div>
             <div class="tags">{#each tags(current) as t}<span class="num">{t}</span>{/each}</div>
           </div>
         </div>
@@ -1254,8 +1318,8 @@
     {#each ghosts as g (g.key)}
       <div class="card ghost" use:fly={g}>
         <div class="layers" style:scale={g.zoomed !== 1 ? g.zoomed : null}>
-          <img class="fill" src={thumbUrl(g.card, 64)} alt="" />
-          <img class="photo ready" src={imgUrl(g.card)} alt="" />
+          <img class="fill" src={thumbUrl(g.shown, 64)} alt="" />
+          <img class="photo ready" src={imgUrl(g.shown)} alt="" />
         </div>
       </div>
     {/each}
@@ -1460,6 +1524,31 @@
   .rb.super.marked {
     background: color-mix(in srgb, var(--super) 45%, rgba(0, 0, 0, 0.35));
   }
+  /* a work's page badge: which page is on screen; it turns to the next one */
+  .pg {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 32px;
+    padding: 4px 11px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  @media (max-width: 759px) {
+    .pg {
+      top: calc(var(--safe-top, env(safe-area-inset-top, 0px)) + 52px);
+      min-height: 40px;
+    }
+  }
   /* a few quiet seconds: only the picture */
   header,
   .buttons,
@@ -1468,6 +1557,7 @@
   .meta,
   .mark,
   .miniback,
+  .pg,
   .card.top::after {
     transition: opacity 400ms;
   }
@@ -1478,9 +1568,18 @@
   .stage.idle .meta,
   .stage.idle .mark,
   .stage.idle .miniback,
+  .stage.idle .pg,
   .stage.idle .card.top::after {
     opacity: 0;
     pointer-events: none;
+  }
+  /* the card layout's own buttons on the card stay clickable while faded out: a click there must do
+     what it aims at (and wake the screen), never fall through to the card and rate it */
+  .stage.idle .chev.fixed,
+  .stage.idle .eye.fixed,
+  .stage.idle .miniback,
+  .stage.idle .pg {
+    pointer-events: auto;
   }
   /* on a phone the header's own buttons take touches (header > *): not while they are invisible */
   .stage.idle header > * {
@@ -2083,6 +2182,15 @@
   .buttons[data-style='glass'] .rb.small {
     color: rgba(255, 255, 255, 0.85);
   }
+  /* glass, too, shows a picture's own rating (a tap on a lit ♥ takes it back) and the press of a button */
+  .buttons[data-style='glass'] .rb.marked,
+  .buttons[data-style='glass'][data-lit='like'] .rb.like,
+  .buttons[data-style='glass'][data-lit='pass'] .rb.pass,
+  .buttons[data-style='glass'][data-lit='super'] .rb.super {
+    background: color-mix(in srgb, var(--c) 55%, rgba(255, 255, 255, 0.08));
+    border-color: color-mix(in srgb, var(--c) 70%, rgba(255, 255, 255, 0.35));
+    color: #fff;
+  }
   .miniback {
     position: absolute;
     left: calc(50% - 60px);
@@ -2140,6 +2248,19 @@
     justify-items: center;
     gap: 10px;
     color: var(--muted);
+  }
+  .add-folder {
+    margin-top: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 999px;
+    background: #0096fa;
+    color: #ffffff;
+    font-weight: 700;
+    cursor: pointer;
   }
   /* short screens (small phones, landscape): smaller buttons, a flatter zigzag, the name lower */
   @media (max-height: 680px) {

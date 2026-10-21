@@ -102,9 +102,13 @@
 
   // the logo above the top row: away while the list is scrolled down, back at its top
   let away = $state(false);
+  const BRAND_H = 50; // .brand's height
   function onScroll(e: Event) {
-    const y = (e.currentTarget as HTMLElement).scrollTop;
-    if (y > 24) away = true;
+    const el = e.currentTarget as HTMLElement;
+    const y = el.scrollTop;
+    // only when the list can still scroll past the threshold without it, or folding it away would
+    // shrink the list's scroll back under the threshold and bring it straight back
+    if (!away && y > 24 && el.scrollHeight - el.clientHeight > BRAND_H + 24) away = true;
     else if (y < 4) away = false;
   }
 
@@ -167,7 +171,7 @@
     <div class="selbar">
       <button class="x" title={t('選択をやめる')} onclick={() => (sel = new Set())}>{@html svg('x', 18)}</button>
       <span class="num">{t('{0} フォルダ', sel.size)}</span>
-      {#if !IOS}<button class="act" onclick={() => (sorting = true)}>{@html svg('folderPlus', 17)}<span class="lbl">{t('サブフォルダに分ける§button')}</span></button>{/if}
+      {#if !st.remote && !IOS}<button class="act" onclick={() => (sorting = true)}>{@html svg('folderPlus', 17)}<span class="lbl">{t('サブフォルダに分ける§button')}</span></button>{/if}
     </div>
   {/if}
 </section>

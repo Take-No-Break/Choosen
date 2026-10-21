@@ -66,3 +66,45 @@ export class TapSeries {
     f();
   }
 }
+
+/**
+ * A lone tap on a work of several pages turns its page once no second tap came (a double tap stays
+ * 好評). While pages are being turned (the last turn at most `rhythm` ms ago) a tap turns at once and
+ * never counts towards a double or triple tap, so quick taps through a work never rate it.
+ */
+export class PageTaps {
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  private lastTurn = -1e9;
+  constructor(
+    private wait = 300, // as TapSeries: how long a lone tap waits for a second one
+    private rhythm = 700,
+  ) {}
+  /** A tap at `now` while turning pages: true = turn now (the caller turns and resets its taps). */
+  turning(now: number): boolean {
+    if (now - this.lastTurn > this.rhythm) return false;
+    this.lastTurn = now;
+    return true;
+  }
+  /** A lone tap: `turn` runs after the wait, unless cancelled; it returns whether it turned. */
+  later(turn: () => boolean) {
+    this.cancel();
+    this.timer = setTimeout(() => {
+      this.timer = undefined;
+      if (turn()) this.lastTurn = performance.now();
+    }, this.wait);
+  }
+  /** A turn by key or badge also keeps the rhythm going. */
+  turned(now: number) {
+    this.lastTurn = now;
+  }
+  /** Another touch on the same work: the waiting tap is dropped (the turning rhythm goes on). */
+  cancel() {
+    clearTimeout(this.timer);
+    this.timer = undefined;
+  }
+  /** Another work on screen: nothing waits and the rhythm is over (its double tap likes again). */
+  reset() {
+    this.cancel();
+    this.lastTurn = -1e9;
+  }
+}

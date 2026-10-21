@@ -3,6 +3,8 @@
   // Settings: photo folders, controls, review share, works, effects, phones (QR) and export.
   // Everything is stored by the core (POST /api/config ...), shared with the Version 1 page.
   import { matchFolder } from './lib/folders';
+  import { keyLegend, pageKeys } from './lib/keys';
+  import { mouseLegend, mouseMap, type MouseInput } from './lib/mouse';
   import { getJ, postJ, ANDROID, IOS, openIosSettings, openPc, lastPc, iconColor, setIconColor, type State } from './lib/api';
   import { type Intensity } from './lib/burst';
   import { fx, setFx } from './lib/fx.svelte';
@@ -76,6 +78,47 @@
     [2, 'B', t('→ 長押し ← ↓ ↑')],
     [3, 'C', 'D A W ⇧ E'],
   ];
+  // what the chosen mouse mode and keyboard layout do, made from the swipe screen's own tables (the
+  // mouse modes are for the cards: the scroll layout's mouse is fixed, so it gets its own rows)
+  const DO: Record<string, string> = {
+    like: t('好評§action'),
+    likeHold: t('好評§action'),
+    super: t('超好評§action'),
+    pass: t('見送り§action'),
+    archive: t('アーカイブ§action'),
+    back: t('前の画像に戻る'),
+    fwd: t('次の画像へ進む'),
+    grab: t('つかんで投げる'),
+    flick: t('フリックの開始 / 終了（Esc でも）'),
+    pageNext: t('次のページ'),
+    pagePrev: t('前のページ'),
+  };
+  const KEY_NAME: Record<string, string> = {
+    ArrowRight: '→',
+    ArrowLeft: '←',
+    ArrowUp: '↑',
+    ArrowDown: '↓',
+    ShiftLeft: t('左 Shift'),
+    ShiftRight: t('右 Shift'),
+    Period: '.',
+    Comma: ',',
+  };
+  const keyName = (c: string) => KEY_NAME[c] ?? c.replace(/^Key/, '');
+  const INPUT_NAME: Record<MouseInput, string> = {
+    left: t('左ボタン'),
+    right: t('右ボタン'),
+    middle: t('ホイールを押す'),
+    wheelUp: t('ホイール ↑'),
+    wheelDown: t('ホイール ↓'),
+    side1: t('サイドボタン 戻る'),
+    side2: t('サイドボタン 進む'),
+  };
+  const keyRows = $derived(keyLegend(st.keyMode));
+  const pageRows = $derived(
+    (['pageNext', 'pagePrev'] as const).map((c) => [c, pageKeys(st.keyMode, c)] as const).filter(([, k]) => k.length > 0),
+  );
+  const mouseRows = $derived(mouseLegend(mouseMap(st.mouseMode, st.customMouse)));
+  const throws = $derived(mouseRows.some(([c]) => c === 'grab' || c === 'flick'));
   const SHARES: [number, string][] = [
     [0, t('なし')],
     [0.05, t('20 枚に 1 枚')],
@@ -283,7 +326,7 @@
       <div class="item">
         <span class="label">{t('ボタン')}</span>
         <span class="pills">
-          {#each [['line', t('ライン')], ['glass', t('グラス')], ['classic', t('クラシック')]] as [v, label] (v)}
+          {#each [['glass', t('グラス')], ['line', t('ライン')], ['classic', t('クラシック')]] as [v, label] (v)}
             <button class:on={prefs.buttons === v} onclick={() => setButtonStyle(v as ButtonStyle)}>{label}</button>
           {/each}
         </span>
@@ -341,6 +384,18 @@
             {#if s.customMouse}<button class:on={st.mouseMode === 4} title={t('Version 1 の割り当て')} onclick={() => config({ mouse_mode: 4 })}>{t('自分')}</button>{/if}
           </span>
         </div>
+        <dl class="legend">
+          {#if prefs.layout === 'scroll'}
+            <div><dt>{INPUT_NAME.wheelDown} / {t('上へドラッグ')}</dt><dd>{t('次の画像へ（新しい画像は見送り）')}</dd></div>
+            <div><dt>{INPUT_NAME.wheelUp} / {t('下へドラッグ')}</dt><dd>{DO.back}</dd></div>
+            <div><dt>{t('ダブルクリック')}</dt><dd>{DO.like}</dd></div>
+            <div><dt>{t('トリプルクリック')}</dt><dd>{DO.super}</dd></div>
+          {:else}
+            {#each mouseRows as [c, ins] (c)}<div><dt>{ins.map((i) => INPUT_NAME[i]).join(' / ')}</dt><dd>{DO[c]}</dd></div>{/each}
+            {#if throws}<div><dt>{t('投げる・はじく向き')}</dt><dd>→ {DO.like} · ← {DO.pass} · ↑ {DO.super} · ↓ {DO.archive}</dd></div>{/if}
+          {/if}
+        </dl>
+        {#if prefs.layout === 'scroll'}<p class="legend-note">{t('マウスの 1・2・3 はカード表示で使われます')}</p>{/if}
         <div class="item">
           <span class="label">{t('キーボード')}</span>
           <span class="pills">
@@ -349,6 +404,16 @@
             {/each}
           </span>
         </div>
+        <dl class="legend">
+          {#each keyRows as [c, codes] (c)}
+            <div><dt>{#each codes as k, i (k)}{#if i}<i>/</i>{/if}<kbd>{keyName(k)}</kbd>{/each}</dt><dd>{DO[c]}</dd></div>
+            {#if c === 'likeHold'}<div><dt><kbd>{keyName(codes[0])}</kbd><i>{t('長押し')}</i></dt><dd>{DO.super}</dd></div>{/if}
+          {/each}
+          {#each pageRows as [c, codes] (c)}
+            <div><dt>{#each codes as k, i (k)}{#if i}<i>/</i>{/if}<kbd>{keyName(k)}</kbd>{/each}</dt><dd>{DO[c]}</dd></div>
+          {/each}
+        </dl>
+        {#if st.keyMode === 4}<p class="legend-note">{t('Version 1 の自分の配置はここでは使えないため、B で動きます')}</p>{/if}
       </div>
 
       <div class="group">
@@ -822,4 +887,49 @@
     animation: pop 200ms var(--ease-out);
   }
 
+  /* what the chosen mouse mode / keyboard layout does */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin: -4px 0 0;
+    padding: 0 14px 11px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .legend div {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .legend dt,
+  .legend dd {
+    margin: 0;
+  }
+  .legend dt {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .legend i {
+    font-style: normal;
+    opacity: 0.7;
+  }
+  kbd {
+    min-width: 20px;
+    padding: 1px 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .legend-note {
+    margin: 0;
+    padding: 0 14px 11px;
+    color: var(--muted);
+    font-size: 12px;
+  }
 </style>

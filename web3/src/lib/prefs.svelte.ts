@@ -4,11 +4,11 @@
 //   autoNext: scroll layout, a like / super like moves on by itself (off: it only marks the
 //           picture, as in photo apps; the swipe up saves the mark)
 //   info:   the folder and file name on the picture (the eye button)
-//   buttons: the look of ↩ ✕ ★ ♥ — line (a thin white ring, see-through, its colour shows the moment it
-//           is pressed; the default, and every device switched to it once on 2026-10-08), glass
-//           (frosted), classic (coloured rings)
+//   buttons: the look of ↩ ✕ ★ ♥ — glass (frosted; the main look, lib/buttonstyle.ts), line (a thin
+//           white ring, see-through, its colour shows the moment it is pressed), classic (coloured rings)
+import { buttonStyleFrom, BUTTONS_DEFAULT, type ButtonStyle } from './buttonstyle';
+export type { ButtonStyle } from './buttonstyle';
 export type Layout = 'cards' | 'scroll';
-export type ButtonStyle = 'glass' | 'line' | 'classic';
 
 function read<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -23,20 +23,15 @@ export const prefs = $state({
   layout: read<Layout>('choosen3.layout', ['cards', 'scroll'], 'cards'),
   autoNext: read('choosen3.autoNext', ['1', '0'], '1') === '1',
   info: read('choosen3.info', ['1', '0'], '1') === '1',
-  buttons: lineOnce(),
+  buttons: buttonStyle(),
 });
 
-function lineOnce(): ButtonStyle {
+function buttonStyle(): ButtonStyle {
   try {
-    if (localStorage.getItem('choosen3.buttonStyleLine') !== '1') {
-      localStorage.setItem('choosen3.buttonStyleLine', '1');
-      localStorage.setItem('choosen3.buttonStyle', 'line');
-      return 'line';
-    }
+    return buttonStyleFrom(localStorage);
   } catch {
-    return 'line';
+    return BUTTONS_DEFAULT; // storage blocked
   }
-  return read<ButtonStyle>('choosen3.buttonStyle', ['glass', 'line', 'classic'], 'line');
 }
 
 export function setButtonStyle(v: ButtonStyle) {
