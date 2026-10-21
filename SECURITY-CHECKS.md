@@ -12,7 +12,7 @@ The README badges show workflow execution status on the public main branch. A su
 
 ## Download results
 
-The Android APK and Windows ZIP are the distributed application files. Version 0.14.0 was not submitted to VirusTotal. The recorded results below are for the 0.12.0 files and do not apply to 0.14.0:
+The Android APK and Windows ZIP are the distributed application files. Version 0.16.0 has not been submitted to VirusTotal yet. The recorded results below are for the 0.12.0 files and do not apply to 0.16.0:
 
 | File | Result |
 |---|---|
@@ -33,6 +33,6 @@ Release checks verify the published files' sizes, SHA-256 hashes, archive conten
 
 | File | SHA-256 |
 |---|---|
-| Choosen-Android-arm64.apk | 6936e4b981a60d299ffd45dd95621135e569a116030b99812884dd2abe534537 |
-| Choosen-Windows-x64.zip | a093248fe09d1d94d978f9c9c5d494d116222602ca45e88c4da0ab7cbfb6fea7 |
-| Choosen.exe inside the ZIP | b5bdf2b5e34c5f968c6bac115fb274bee11f2659a6f8ff3a22ceefdddbe5510c |
+| Choosen-Android-arm64.apk | 4fdd3df8fe6780935c63f3bcebd3093cc11476d03a870e861fc6e98f81335b79 |
+| Choosen-Windows-x64.zip | 660c9e7c578fd542f85dc640adc1ede3366a7d954d70129658b9597c05aa60c1 |
+| Choosen.exe inside the ZIP | 4014d703b1c9f5e6ab607319d4f73e281e9c04f7a417a03f0a16d08cc8fa33b0 |

@@ -1,19 +1,19 @@
 {
-  "tag": "v0.14.0",
+  "tag": "v0.16.0",
   "artifacts": [
     {
       "name": "Choosen-Android-arm64.apk",
-      "sha256": "6936e4b981a60d299ffd45dd95621135e569a116030b99812884dd2abe534537",
-      "bytes": 4077063,
+      "sha256": "4fdd3df8fe6780935c63f3bcebd3093cc11476d03a870e861fc6e98f81335b79",
+      "bytes": 4105391,
       "kind": "apk"
     },
     {
       "name": "Choosen-Windows-x64.zip",
-      "sha256": "a093248fe09d1d94d978f9c9c5d494d116222602ca45e88c4da0ab7cbfb6fea7",
-      "bytes": 650494,
+      "sha256": "660c9e7c578fd542f85dc640adc1ede3366a7d954d70129658b9597c05aa60c1",
+      "bytes": 660883,
       "kind": "windows",
-      "exe_sha256": "b5bdf2b5e34c5f968c6bac115fb274bee11f2659a6f8ff3a22ceefdddbe5510c"
+      "exe_sha256": "4014d703b1c9f5e6ab607319d4f73e281e9c04f7a417a03f0a16d08cc8fa33b0"
     }
   ],
-  "source_ref": "v0.14.0"
+  "source_ref": "v0.16.0"
 }
