@@ -4,9 +4,9 @@
 
 ปัดรูปแบบ Tinder แล้วค้นหารูปโปรดของคุณ!
 
-[⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Windows-x64.zip)
+[⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/latest/download/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/latest/download/Choosen-Windows-x64.zip)
 
-⚠️ ผล VirusTotal สำหรับเวอร์ชัน 0.16.0 บันทึกเมื่อ 2026-10-21: ตรวจพบ Windows 2/71 รายการ ยังอยู่ระหว่างการตรวจสอบ ส่วน Android 0/67 [ดูผลการตรวจสอบ](../SECURITY-CHECKS.md)
+⚠️ ปุ่มดาวน์โหลดให้เวอร์ชันล่าสุดเสมอ (0.17.0) โปรดติดตั้งเวอร์ชันนั้น เวอร์ชัน 0.17.0 ยังไม่ได้ตรวจด้วย VirusTotal ผล VirusTotal สำหรับเวอร์ชัน 0.16.0 บันทึกเมื่อ 2026-10-21: ตรวจพบ Windows 2/71 รายการ ยังอยู่ระหว่างการตรวจสอบ ส่วน Android 0/67 [ดูผลการตรวจสอบ](../SECURITY-CHECKS.md)
 
 ## ชอบ ชอบมาก หรือข้าม?
 

@@ -4,9 +4,9 @@
 
 像刷Tinder一样滑动照片，找到你的最爱！
 
-[⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Windows-x64.zip)
+[⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/latest/download/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/latest/download/Choosen-Windows-x64.zip)
 
-⚠️ 0.16.0版的VirusTotal检查结果（2026-10-21）：Windows版有2/71项检出，仍待调查；Android版为0/67。[查看检查结果](../SECURITY-CHECKS.md)。
+⚠️ 下载按钮始终提供最新版本（0.17.0），请安装最新版本。0.17.0版尚未在VirusTotal中检查。0.16.0版的VirusTotal检查结果（2026-10-21）：Windows版有2/71项检出，仍待调查；Android版为0/67。[查看检查结果](../SECURITY-CHECKS.md)。
 
 ## 喜欢，还是跳过？
 

@@ -12,7 +12,7 @@ The README badges show workflow execution status on the public main branch. A su
 
 ## Download results
 
-These VirusTotal results were recorded on 2026-10-21 for the exact **0.16.0** files identified by SHA-256 below. The Android APK and the EXE extracted from the published Windows ZIP were submitted. The ZIP itself was not submitted for a separate malware scan.
+The newest release is **0.17.0**; it has not been submitted to VirusTotal yet. These VirusTotal results were recorded on 2026-10-21 for the exact **0.16.0** files (APK 4fdd3df8…, EXE 4014d703…). The Android APK and the EXE extracted from the published Windows ZIP were submitted. The ZIP itself was not submitted for a separate malware scan.
 
 | File | Result |
 |---|---|
@@ -35,6 +35,6 @@ Release checks verify the published files' sizes, SHA-256 hashes, archive conten
 
 | File | SHA-256 |
 |---|---|
-| Choosen-Android-arm64.apk | 4fdd3df8fe6780935c63f3bcebd3093cc11476d03a870e861fc6e98f81335b79 |
-| Choosen-Windows-x64.zip | 660c9e7c578fd542f85dc640adc1ede3366a7d954d70129658b9597c05aa60c1 |
-| Choosen.exe inside the ZIP | 4014d703b1c9f5e6ab607319d4f73e281e9c04f7a417a03f0a16d08cc8fa33b0 |
+| Choosen-Android-arm64.apk | 3568a2c093a511ad6bc1e06edb3f44499e0c07b0dc63f8d36a74e9393f547843 |
+| Choosen-Windows-x64.zip | d9173acf215951add2cf714f8ead21e357ad5d1079e9c2e9cf7bde895c10c4ae |
+| Choosen.exe inside the ZIP | c12d899ecdb60444304b32bbcb5d1a98cb71ecc8783d47843ed1bac13188bf8e |

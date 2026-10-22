@@ -4,9 +4,9 @@
 
 写真をTinderみたいにスワイプ。お気に入りを見つけよう！
 
-[⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/download/v0.16.0/Choosen-Windows-x64.zip)
+[⬇ Android APK](https://github.com/Take-No-Break/Choosen/releases/latest/download/Choosen-Android-arm64.apk) · [⬇ Windows ZIP](https://github.com/Take-No-Break/Choosen/releases/latest/download/Choosen-Windows-x64.zip)
 
-⚠️ 0.16.0のVirusTotal検査結果（2026-10-21）：Windows版は2/71件の検出（未解決・調査中）、Android版は0/67件です。[検査結果](../SECURITY-CHECKS.md)をご確認ください。
+⚠️ ダウンロードは常に最新版（0.17.0）です。最新版を入れてください。0.17.0はまだVirusTotalで検査していません。0.16.0のVirusTotal検査結果（2026-10-21）：Windows版は2/71件の検出（未解決・調査中）、Android版は0/67件です。[検査結果](../SECURITY-CHECKS.md)をご確認ください。
 
 ## 好き？それともパス？
 
