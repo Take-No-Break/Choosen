@@ -75,11 +75,28 @@
         });
     }
   }
+  // a wide window shows as many of a folder's best pictures as fit beside its name (a narrow one 4);
+  // a few more than fit are asked for, the strip shows only whole ones
+  const fitFor = (w: number) => (w >= 760 ? Math.min(30, Math.ceil(w / 77)) : 4);
+  let fit = $state(fitFor(innerWidth));
+  // a wider window: rows already shown ask again for the pictures that now fit
+  function resized() {
+    const f = fitFor(innerWidth);
+    if (f <= fit) return;
+    fit = f;
+    for (const path of Object.keys(previews)) {
+      asked.delete(path);
+      want(path);
+    }
+  }
   async function best(path: string): Promise<Card[]> {
     const get = (filter: string) =>
-      getJ<{ items: Card[] }>('/api/items', { filter, scope: path, sort: 'score', limit: 4, offset: 0 }).then((r) => r.items);
+      getJ<{ items: Card[] }>('/api/items', { filter, scope: path, sort: 'score', limit: fit, offset: 0 }).then((r) => r.items);
+    // its liked pictures first, then the rest of the folder by score until the strip is full
     const liked = await get('liked');
-    return liked.length ? liked : get('all');
+    if (liked.length >= fit) return liked;
+    const have = new Set(liked.map((c) => c.id));
+    return [...liked, ...(await get('all')).filter((c) => !have.has(c.id))].slice(0, fit);
   }
 
   // a row asks for its images when it comes into view
@@ -114,6 +131,8 @@
 
   const medal = (r: number) => (r === 1 ? '#f4c542' : r === 2 ? '#c9ced6' : r === 3 ? '#d2905a' : '');
 </script>
+
+<svelte:window onresize={resized} />
 
 <section class="ranking">
   <div class="brand" class:away aria-hidden={away}>
@@ -160,7 +179,7 @@
           {#each previews[r.path] ?? [] as c (c.id)}
             <img src={thumbUrl(c, 256)} alt="" loading="lazy" />
           {:else}
-            {#each [0, 1, 2, 3] as k (k)}<span class="ph"></span>{/each}
+            {#each Array.from({ length: Math.min(fit, 8) }, (_, k) => k) as k (k)}<span class="ph"></span>{/each}
           {/each}
         </span>
         <span class="score num" style:color={m || 'var(--text)'}>{r.score.toFixed(1)}</span>
@@ -302,8 +321,8 @@
     box-shadow: 0 0 18px color-mix(in srgb, var(--m) 55%, transparent);
   }
   .who {
-    flex: 1;
-    min-width: 0;
+    flex: 0 1 240px;
+    min-width: 120px;
     display: flex;
     flex-direction: column;
     gap: 5px;
@@ -331,9 +350,15 @@
   .down {
     color: var(--pass);
   }
+  /* as many whole pictures as fit: the ones that do not fit go to rows of no height */
   .strip {
-    flex: none;
-    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 72px);
+    grid-auto-rows: 72px;
+    height: 72px;
+    overflow: hidden;
     gap: 5px;
   }
   .strip img,
@@ -367,8 +392,14 @@
       flex-wrap: wrap;
       gap: 8px 12px;
     }
+    .who {
+      flex: 1;
+    }
     .strip {
       order: 4;
+      flex: none;
+      display: flex;
+      height: auto;
       width: 100%;
       padding-left: 56px;
     }

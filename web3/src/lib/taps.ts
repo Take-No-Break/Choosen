@@ -115,16 +115,38 @@ export class PageTaps {
  * still goes round from the last page to the first. Its own timer, since whether and how fast
  * Windows repeats a held Shift is a system setting.
  */
+const MODIFIER = /^(Control|Alt|Meta|OS)/;
+
 export class PageKeyHold {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private code = '';
+  private down = new Set<string>(); // keys whose keydown reached the page, until their keyup
+  private chord = false; // a Ctrl, Alt or Win key went down or up while a Shift was held
   constructor(
     private delay = 300,
     private every = 100,
   ) {}
+  /** A keydown of this key reached the page (whether it turned or not); shift: Shift was held. */
+  saw(code: string, shift: boolean) {
+    this.down.add(code);
+    if (shift && MODIFIER.test(code)) this.chord = true;
+  }
+  /**
+   * The key went up: true when its keydown never reached the page and it was no part of a chord (a
+   * Ctrl, Alt or Win key going down or up while the Shift was held, even if let go first). With the
+   * Japanese IME on, a lone Shift's keydown can go to the IME (it switches the input mode) while its
+   * keyup still comes.
+   */
+  missed(code: string, shift: boolean): boolean {
+    if (shift && MODIFIER.test(code)) this.chord = true;
+    const m = !this.down.has(code) && !this.chord;
+    this.down.delete(code);
+    if (code.startsWith('Shift') && !shift) this.chord = false; // no Shift held any more: the chord is over
+    return m;
+  }
   /** The key went down (not a repeat). `turn(first)` turns the page and says whether it did. */
   press(code: string, turn: (first: boolean) => boolean) {
-    this.release();
+    this.stop();
     if (!turn(true)) return;
     this.code = code;
     const next = () => {
@@ -135,6 +157,9 @@ export class PageKeyHold {
   /** That key went up (without a code: any key, e.g. the window lost the keyboard). */
   release(code?: string) {
     if (code !== undefined && code !== this.code) return;
+    this.stop();
+  }
+  private stop() {
     clearTimeout(this.timer);
     this.timer = undefined;
     this.code = '';

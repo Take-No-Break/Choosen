@@ -990,6 +990,7 @@
   // ---- keyboard (layouts A/B/C) and the wheel (mode 1: up = back, down = forward)
   let holdTimer = 0;
   function onKeyDown(e: KeyboardEvent) {
+    pageHold.saw(e.code, e.shiftKey);
     if (!active) return;
     wake();
     if (picking || targetMenu || sheet) {
@@ -1020,7 +1021,13 @@
   }
   function onKeyUp(e: KeyboardEvent) {
     pageHold.release(e.code);
+    const missed = pageHold.missed(e.code, e.shiftKey);
     if (!active) return;
+    // a Shift whose keydown the Japanese IME took (its keyup still comes): one page on
+    const cmd = commandFor(st.keyMode, e.code);
+    if (missed && e.code.startsWith('Shift') && (cmd === 'pageNext' || cmd === 'pagePrev') && pages &&
+        !e.ctrlKey && !e.altKey && !e.metaKey && !picking && !targetMenu && !sheet)
+      return void flip(cmd === 'pageNext' ? 1 : -1);
     if (commandFor(st.keyMode, e.code) === 'likeHold' && holdTimer) {
       clearTimeout(holdTimer);
       holdTimer = 0;

@@ -226,6 +226,7 @@
   });
 
   function onKey(e: KeyboardEvent) {
+    pageHold.saw(e.code, e.shiftKey);
     const plain = !e.ctrlKey && !e.altKey && !e.metaKey; // Alt+Shift, Win+Shift+S ... are not ours
     if (e.key === 'Escape' && editing) editing = false; // the choices first, then the view
     else if (e.key === 'Escape') onclose();
@@ -353,7 +354,11 @@
     if (Math.abs(d) > 60) go(d < 0 ? 1 : -1);
   }
   onMount(() => {
-    const keyUp = (e: KeyboardEvent) => pageHold.release(e.code);
+    const keyUp = (e: KeyboardEvent) => {
+      pageHold.release(e.code);
+      // a Shift whose keydown the Japanese IME took (its keyup still comes): one page on
+      if (pageHold.missed(e.code, e.shiftKey) && e.code.startsWith('Shift') && pages && !editing && !e.ctrlKey && !e.altKey && !e.metaKey) flip(1);
+    };
     const blur = () => pageHold.release();
     addEventListener('keydown', onKey, true); // before the swipe screen's keys
     addEventListener('keyup', keyUp, true);

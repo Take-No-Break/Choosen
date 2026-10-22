@@ -140,3 +140,57 @@ describe('grouping off: each page is its own card and can still turn', () => {
     expect(ratedOf(work, 2)).toBe(work);
   });
 });
+
+describe('a Shift whose keydown the IME took', () => {
+  it('is noticed at its keyup, once; a normal press is not', () => {
+    const h = new PageKeyHold();
+    expect(h.missed('ShiftLeft', false)).toBe(true); // only the keyup came
+    h.saw('ShiftLeft', true);
+    expect(h.missed('ShiftLeft', false)).toBe(false); // keydown and keyup both came
+    expect(h.missed('ShiftLeft', false)).toBe(true);
+  });
+  it('a normal press stays one when another work comes meanwhile (release without a code)', () => {
+    const h = new PageKeyHold();
+    h.saw('ShiftLeft', true);
+    h.release();
+    expect(h.missed('ShiftLeft', false)).toBe(false);
+  });
+  it('is no page turn in a chord, whenever the modifier is let go', () => {
+    const h = new PageKeyHold();
+    h.saw('AltLeft', false); // Alt down; Shift's keydown taken by the IME
+    h.missed('AltLeft', true); // Alt up while Shift is held (any time later)
+    expect(h.missed('ShiftLeft', false)).toBe(false);
+    h.saw('ControlLeft', true); // Shift (taken) then Ctrl down
+    h.missed('ControlLeft', true);
+    expect(h.missed('ShiftLeft', false)).toBe(false);
+  });
+  it('stays a chord while the other Shift is still held', () => {
+    const h = new PageKeyHold();
+    h.saw('AltLeft', false);
+    h.saw('ShiftLeft', false); // a normal Shift; the right one's keydown is taken
+    h.missed('AltLeft', true); // Alt up, Shifts held
+    expect(h.missed('ShiftLeft', true)).toBe(false); // the right Shift still held
+    expect(h.missed('ShiftRight', false)).toBe(false); // part of the chord too
+    expect(h.missed('ShiftRight', false)).toBe(true); // a lone one later turns
+  });
+  it('a lone Shift right after using Ctrl still turns', () => {
+    const h = new PageKeyHold();
+    h.saw('ControlLeft', false);
+    h.saw('KeyC', false);
+    h.missed('KeyC', false);
+    h.missed('ControlLeft', false);
+    expect(h.missed('ShiftLeft', false)).toBe(true);
+  });
+});
+
+describe('a normal Shift press', () => {
+  it('turns once: its keyup is not taken for a missed one', () => {
+    const h = new PageKeyHold();
+    let turns = 0;
+    h.saw('ShiftLeft', true);
+    h.press('ShiftLeft', () => (turns++, true));
+    h.release('ShiftLeft');
+    expect(h.missed('ShiftLeft', false)).toBe(false);
+    expect(turns).toBe(1);
+  });
+});
